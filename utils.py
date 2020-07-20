@@ -1,4 +1,5 @@
 import numpy as np
+from skimage.transform import resize
 from PIL import Image
 
 def DepthNorm(x, maxDepth):
@@ -10,8 +11,9 @@ def predict(model, images, minDepth=10, maxDepth=1000, batch_size=2):
     if len(images.shape) < 4: images = images.reshape((1, images.shape[0], images.shape[1], images.shape[2]))
     # Compute predictions
     predictions = model.predict(images, batch_size=batch_size)
+    #print(predictions, type(predictions),  predictions.shape)
     # Put in expected range
-    return np.clip(DepthNorm(predictions, maxDepth=maxDepth), minDepth, maxDepth) / maxDepth
+    return np.squeeze(DepthNorm(predictions, maxDepth=maxDepth), axis=3) #np.clip(, minDepth, maxDepth) / maxDepth
 
 def scale_up(scale, images):
     from skimage.transform import resize
@@ -27,8 +29,11 @@ def scale_up(scale, images):
 def load_images(image_files):
     loaded_images = []
     for file in image_files:
+
         x = np.clip(np.asarray(Image.open( file ), dtype=float) / 255, 0, 1)
-        loaded_images.append(x)
+        print(x.shape)
+        new_x = x#resize(x, (480, 640), anti_aliasing=True)
+        loaded_images.append(new_x)
     return np.stack(loaded_images, axis=0)
 
 def to_multichannel(i):
