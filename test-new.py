@@ -63,20 +63,6 @@ def voxel_to_csv(points, path):
         writer = csv.writer(f, delimiter=",")
         writer.writerows(points)
 
-def mathching_skimage(img1, kp1, des1, img2, kp2, des2, plot=False):
-    orginal_points = np.array([(kp1[idx].pt[1], kp1[idx].pt[0]) for idx in range(len(kp1))], dtype=float)
-    prime_points = np.array([(kp2[idx].pt[1], kp2[idx].pt[0]) for idx in range(len(kp2))], dtype=float)
-    matches = match_descriptors(des1, des2, cross_check=True)
-
-    if(plot):
-        fig, ax = plt.subplots()
-        plt.gray()
-        plot_matches(ax, img1, img2, orginal_points, prime_points, matches, only_matches=False,keypoints_color='red')
-        ax.set_title("Matches")
-        plt.show()
-
-    return matches
-
 def get_transformed_points(keypoints, H_matrix):
     keypoints_3dim = np.zeros((keypoints.shape[0], keypoints.shape[1] + 1))
     transformed_points = np.zeros(keypoints.shape)
@@ -97,41 +83,6 @@ def get_transformed_points(keypoints, H_matrix):
     #print(transformed_points)
     #print(keypoints)
     return transformed_points
-
-
-'''
-def get_transformed_points(keypoints, H_matrix):
-    transformed_points = np.zeros(keypoints.shape)
-    #print(keypoints_3dim.shape)
-    for i in range(len(keypoints)):
-        keypoint_3dim = np.array([keypoints[i]], dtype=float)
-        #print(np.transpose(keypoint_3dim))
-        transformed_point_3dim = np.dot(H_matrix, np.transpose(keypoint_3dim))
-        transformed_points[i] = np.transpose(transformed_point_3dim)
-
-    return transformed_points
-'''
-
-def get_tranfromed_m(img1, img2):
-
-    # Initiate SIFT detector
-    sift = cv2.xfeatures2d.SIFT_create()
-    # find the keypoints and descriptors with SIFT
-    kp1, des1 = sift.detectAndCompute(img1,None)
-    kp2, des2 = sift.detectAndCompute(img2,None)
-
-    
-    orginal_points = np.array([(kp1[idx].pt[1], kp1[idx].pt[0]) for idx in range(len(kp1))], dtype=float)
-    keypoints_prime = np.array([(kp2[idx].pt[1], kp2[idx].pt[0]) for idx in range(len(kp2))], dtype=float)
-    print("des size", len(des1), len(des2))
-    #euclidean_matches = euclidean_sift_vec_match(np.arange(0,len(kp1)), orginal_points, keypoints_prime, des1, des2)
-    #ransac_loop_v2(img1, img2, kp1, kp2, des1, des2)
-    #ransac_loop_v3(img1, img2, kp1, kp2, euclidean_matches)
-    bf_matches = mathching_skimage(img1, kp1, des1, img2, kp2, des2, True)
-    H_matrix = q9.ransac_loop(img1, img2, kp1, kp2, bf_matches)
-
-    return H_matrix, bf_matches
-
 
 def find_closest_3d_match(x0, y0, matrix_3d):
     arry_x0_y0 = [(x0, y0) for i in range(len(matrix_3d))]
@@ -233,7 +184,7 @@ print("des size", len(des1), len(des2))
 #euclidean_matches = euclidean_sift_vec_match(np.arange(0,len(kp1)), orginal_points, keypoints_prime, des1, des2)
 #ransac_loop_v2(img1, img2, kp1, kp2, des1, des2)
 #ransac_loop_v3(img1, img2, kp1, kp2, euclidean_matches)
-bf_matches = mathching_skimage(img1, kp1, des1, img2, kp2, des2, True)
+bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, True, 135, 135, 20)
 
 kps1_3d = get_3d_kps(input_voxels[0], kps[0])
 kps2_3d = get_3d_kps(input_voxels[1], kps[1])
@@ -254,14 +205,30 @@ new_3d_pts = [input_voxels[0]]
 new_3d_pts.append(get_transformed_points(input_voxels[1], out))
 
 pcds = []
+window = 50
 for i in range(len(inputs)):
-    voxel_to_csv( input_voxels[i], './cars2/depth/car_{}.csv'.format(i))
+    voxel_to_csv(input_voxels[i], './cars/depth/car{}.csv'.format(i))
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(input_voxels[i])
-    pcds.append(pcd)
-    o3d.io.write_point_cloud("./cars2/depth/car_{}.pcd".format(i), pcd)
+    # window of 50 pixels
+    temp_input_voxels = []
+    for input_voxel in input_voxels[i]:
+        for match in bf_matches:
+            match_y, match_x = None, None
+            if i == 0:
+                match_y, match_x = orginal_points[match[0]]
+            else:
+                match_y, match_x = keypoints_prime[match[1]]
+            input_voxel_y = input_voxel[0]
+            input_voxel_x = input_voxel[1]
+            if (match_y > input_voxel_y - window and match_y < input_voxel_y + window ) and (match_x > input_voxel_x - window and match_x < input_voxel_x + window):
+                temp_input_voxels.append(input_voxel)
+                break
 
-#o3d.visualization.draw_geometries([pcds[0]])
+    pcd.points = o3d.utility.Vector3dVector(temp_input_voxels)
+    pcds.append(pcd)
+    o3d.io.write_point_cloud("./cars/depth/car_{}.pcd".format(i), pcd)
+
+o3d.visualization.draw_geometries([pcds[0]])
 
 voxel_size = 1 # means 5cm for this dataset
 source, target, source_down, target_down, source_fpfh, target_fpfh = fpfh.prepare_dataset(voxel_size, pcds[0], pcds[1])

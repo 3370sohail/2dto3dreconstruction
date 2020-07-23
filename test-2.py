@@ -11,6 +11,25 @@ from tempfile import TemporaryFile
 import pickle
 
 
+def affine(ins, out):
+    # calculations
+    l = len(ins)
+    B = np.vstack([np.transpose(ins), np.ones(l)])
+    D = 1.0 / np.linalg.det(B)
+    entry = lambda r, d: np.linalg.det(np.delete(np.vstack([r, B]), (d + 1), axis=0))
+    M = [[(-1) ** i * D * entry(R, i) for i in range(l)] for R in np.transpose(out)]
+    A, t = np.hsplit(np.array(M), [l - 1])
+    t = np.transpose(t)[0]
+    # output
+    print("Affine transformation matrix:\n", A)
+    print("Affine transformation translation vector:\n", t)
+    # unittests
+    print("TESTING:")
+    for p, P in zip(np.array(ins), np.array(out)):
+        image_p = np.dot(A, p) + t
+        result = "[OK]" if np.allclose(image_p, P) else "[ERROR]"
+        print(p, " mapped to: ", image_p, " ; expected: ", P, result)
+
 def read_depth_folder(path):
     """
     Read all the images from a folder
@@ -203,9 +222,7 @@ orginal_points = np.array([(kp1[idx].pt[1], kp1[idx].pt[0]) for idx in range(len
 keypoints_prime = np.array([(kp2[idx].pt[1], kp2[idx].pt[0]) for idx in range(len(kp2))], dtype=int)
 kps = [orginal_points, keypoints_prime]
 print("des size", len(des1), len(des2))
-# euclidean_matches = euclidean_sift_vec_match(np.arange(0,len(kp1)), orginal_points, keypoints_prime, des1, des2)
-# ransac_loop_v2(img1, img2, kp1, kp2, des1, des2)
-# ransac_loop_v3(img1, img2, kp1, kp2, euclidean_matches)
+
 bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, True, 135, 135, 20)
 H_matrix, matchs = q9.ransac_loop(img1, img2, kp1, kp2, bf_matches)
 matchs = bf_matches
@@ -229,13 +246,16 @@ for m in bf_matches:
     m_kps2_3d.append(kps2_3d[m[1]])
 
 
-R, t = r3d.rigid_transform_3D( np.transpose(get_3d_kps(input_voxels[0], m_kp1) ), np.transpose(get_3d_kps(input_voxels[1], m_kp2)))
+R, t = r3d.rigid_transform_3D( np.transpose(get_3d_kps(input_voxels[0], m_kp1)), np.transpose(get_3d_kps(input_voxels[1], m_kp2)))
+#affine(get_3d_kps(input_voxels[0], m_kp1), get_3d_kps(input_voxels[1], m_kp2))
 print(R, t)
+Hmatrix = np.concatenate((R, t), axis=1)
+print(Hmatrix)
 TR = R @ t
 new_t = np.transpose(t)
 new_3d_pts = [input_voxels[0]]
-new_3d_pts.append(get_transformed_pointsv2(input_voxels[1], R) - new_t)
-
+new_3d_pts.append(get_transformed_pointsv2(input_voxels[1], R))
+#new_3d_pts.append(get_transformed_points(input_voxels[1], Hmatrix))
 pcds = []
 for i in range(len(inputs)):
     voxel_to_csv( new_3d_pts[i], './cars2/depth/car_{}.csv'.format(i))

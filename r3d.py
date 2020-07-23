@@ -51,3 +51,4 @@ def rigid_transform_3D(A, B):
     t = -R @ centroid_A + centroid_B
 
     return R, t
+
