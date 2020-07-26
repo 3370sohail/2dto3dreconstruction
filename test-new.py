@@ -202,7 +202,7 @@ retval, out, inliers = cv2.estimateAffine3D(np.array(m_kps2_3d), np.array(m_kps1
 print(out)
 
 new_3d_pts = [input_voxels[0]]
-new_3d_pts.append(get_transformed_points(input_voxels[1], out))
+new_3d_pts.append(get_transformed_points(input_voxels[1], np.linalg.inv(out) ))
 
 pcds = []
 window = 50

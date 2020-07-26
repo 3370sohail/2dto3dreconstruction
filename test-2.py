@@ -167,7 +167,7 @@ from matplotlib import pyplot as plt
 # Argument Parser
 parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
 parser.add_argument('--model', default='nyu.h5', type=str, help='Trained Keras model file.')
-parser.add_argument('--input', default='cars/*.jpg', type=str, help='Input filename or folder.')
+parser.add_argument('--input', default='bottle/*.jpg', type=str, help='Input filename or folder.')
 args = parser.parse_args()
 
 # Custom object needed for inference and training
@@ -207,6 +207,8 @@ img2 = cv2.resize(cv2_imgs[1], (320, 240))
 c = 0
 input_voxels = []
 for i in range(len(inputs)):
+    plt.imshow(outputs[i])
+    plt.show()
     print(outputs[i].shape)
     voxel = depth_to_voxel(outputs[i])
     input_voxels.append(voxel)
@@ -223,7 +225,7 @@ keypoints_prime = np.array([(kp2[idx].pt[1], kp2[idx].pt[0]) for idx in range(le
 kps = [orginal_points, keypoints_prime]
 print("des size", len(des1), len(des2))
 
-bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, True, 135, 135, 20)
+bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, True, 135, 135, 50)
 H_matrix, matchs = q9.ransac_loop(img1, img2, kp1, kp2, bf_matches)
 matchs = bf_matches
 
@@ -246,7 +248,7 @@ for m in bf_matches:
     m_kps2_3d.append(kps2_3d[m[1]])
 
 
-R, t = r3d.rigid_transform_3D( np.transpose(get_3d_kps(input_voxels[0], m_kp1)), np.transpose(get_3d_kps(input_voxels[1], m_kp2)))
+R, t = r3d.rigid_transform_3D( np.transpose(get_3d_kps(input_voxels[1], m_kp2)), np.transpose(get_3d_kps(input_voxels[0], m_kp1)))
 #affine(get_3d_kps(input_voxels[0], m_kp1), get_3d_kps(input_voxels[1], m_kp2))
 print(R, t)
 Hmatrix = np.concatenate((R, t), axis=1)
@@ -258,7 +260,7 @@ new_3d_pts.append(get_transformed_pointsv2(input_voxels[1], R))
 #new_3d_pts.append(get_transformed_points(input_voxels[1], Hmatrix))
 pcds = []
 for i in range(len(inputs)):
-    voxel_to_csv( new_3d_pts[i], './cars2/depth/car_{}.csv'.format(i))
+    voxel_to_csv( input_voxels[i], './cars2/depth/car_{}.csv'.format(i))
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(new_3d_pts[i])
     pcds.append(pcd)

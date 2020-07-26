@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # pasre args
     parser = argparse.ArgumentParser(description='CSC 420 A1 Q4')
 
-    parser.add_argument('--imgs', default='my_apartment/*.png', type=str, help='Input folder_path\*.png')
+    parser.add_argument('--imgs', default='cars2/*.jpg', type=str, help='Input folder_path\*.png')
     args = parser.parse_args()
 
     print(args.imgs)
@@ -198,18 +198,11 @@ if __name__ == "__main__":
 
     half_way_index = num_imgs // 2
 
+    left = recur_stitch(imgs, plot=True, right=False)
+
     # based on if the image set has an even or odd number of images palace the matching in left and right stitching
 
-    if (num_imgs % 2 == 0):
 
-        left = recur_stitch(imgs[:half_way_index], plot=False, right=False)
-        right = recur_stitch(imgs[half_way_index:], plot=False, right=True)
-        final_stitch(left, right)
-
-    else:
-        left = recur_stitch(imgs[:half_way_index + 1], plot=False, right=False)
-        right = recur_stitch(imgs[half_way_index:], plot=False, right=True)
-        final_stitch(left, right)
 
 
 
