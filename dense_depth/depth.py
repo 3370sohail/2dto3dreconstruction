@@ -1,14 +1,10 @@
 import os
 import glob
 import argparse
-import matplotlib
 import csv
 import cv2
 import numpy as np
-from skimage.feature import blob_dog, plot_matches, match_descriptors
-import open3d as o3d
-from tempfile import TemporaryFile
-import pickle
+
 
 def read_depth_folder(path):
     """
@@ -100,3 +96,71 @@ def get_3d_kps(voxels, kps):
                 break
 
     return np.array(kps_3d)
+
+
+# Keras / TensorFlow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
+from keras.models import load_model
+from dense_depth.layers import BilinearUpSampling2D
+from dense_depth.utils import predict, load_images, display_images
+
+from matplotlib import pyplot as plt
+
+def get_depth(model, image_set, plot=False):
+    """
+    Note This code is used to contact the depth detection model from
+    https://github.com/ialhashim/DenseDepth
+    Args:
+        model:
+        image_set:
+        plot:
+
+    Returns: List of rgb images, list of depth images
+
+    """
+    print('Loading model...')
+
+    print('\nModel loaded ({0}).'.format(model))
+
+    # Custom object needed for inference and training
+    custom_objects = {'BilinearUpSampling2D': BilinearUpSampling2D, 'depth_loss_function': None}
+
+    # Load model into GPU / CPU
+    model = load_model(model, custom_objects=custom_objects, compile=False)
+
+
+    # Input images
+    inputs = load_images(glob.glob(image_set))
+    print('\nLoaded ({0}) images of size {1}.'.format(inputs.shape[0], inputs.shape[1:]))
+
+    # Compute results
+    outputs = predict(model, inputs)
+    print(len(outputs), type(outputs))
+
+    files = glob.glob(image_set)
+
+    cv2_imgs = []
+    for f in files:
+        cv2_imgs.append(cv2.resize(cv2.imread(f, cv2.IMREAD_GRAYSCALE), (320, 240)))
+
+
+    # rgb and depth images
+
+    if plot:
+        for i in range(len(files)):
+            fig, axs = plt.subplots(2)
+            axs[0].imshow(cv2_imgs[i], cmap="gray")
+            axs[1].imshow(outputs[i])
+
+            plt.show()
+
+    return cv2_imgs, outputs
+
+if __name__ == "__main__":
+    # Argument Parser
+    parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
+    parser.add_argument('--model', default='kitti.h5', type=str, help='Trained Keras model file.')
+    parser.add_argument('--input', default='../image_sets/helmet/*.jpg', type=str, help='Input filename or folder.')
+    args = parser.parse_args()
+
+    get_depth(args.model, args.input, plot=True)

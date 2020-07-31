@@ -4,5 +4,8 @@
 /*.zip
 /.vscode
 *.jpg
-*.obj
+*.png
+*.jpg
+*.csv
+*.pcd
 /.idea
