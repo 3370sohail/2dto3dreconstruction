@@ -42,16 +42,42 @@ def make_pcds(point_clouds, dump=False, dump_folder=None, image_set_name=None):
 
     return pcds
 
-def fpfh(point_clouds):
+def fpfh(point_clouds, dump=False, dump_folder=None, image_set_name=None):
 
-    pcds = make_pcds(point_clouds)
+    pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
+    all_results = []
     for i in range(1, len(pcds)):
 
-        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i-1], 0.05, 30, 0.05, 100)
-        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 0.05, 30, 0.05, 100)
+        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i-1], 10, 30, 10, 100)
+        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 10, 30, 10, 100)
 
-        results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 1)
-        o3d_utils.visualize_transformation(pcds[i], pcds[i-1], results.transformation)
+        results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 10)
+        # results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 1)
+        o3d_utils.visualize_transformation(src_pcd, tar_pcd, results.transformation)
+        print(results)
+        print(results.transformation)
+        all_results.append(results)
+        if dump:
+            o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i-1), pcds[i-1].transform(results.transformation))
+            o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i])
+
+def riged_3d(point_clouds, dump=False, dump_folder=None, image_set_name=None):
+    pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
+    all_results = []
+    for i in range(1, len(pcds)):
+
+        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i-1], 10, 30, 10, 100)
+        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 10, 30, 10, 100)
+
+        results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 10)
+        # results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 1)
+        o3d_utils.visualize_transformation(src_pcd, tar_pcd, results.transformation)
+        print(results)
+        print(results.transformation)
+        all_results.append(results)
+        if dump:
+            o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i-1), pcds[i-1].transform(results.transformation))
+            o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i])
 
 def depth_images_to_3d_pts(depth_images):
     return [utils.depth_to_voxel(img) for img in depth_images]
@@ -61,13 +87,13 @@ if __name__ == "__main__":
 
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
-    parser.add_argument('--model', default='./models/kitti.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
+    parser.add_argument('--input', default='./image_sets/kitchen/*.png', type=str, help='Input filename or folder.')
     args = parser.parse_args()
 
     rgb_images, depth_images = dd.get_depth(args.model, args.input)
 
     point_clouds = depth_images_to_3d_pts(depth_images)
 
-    fpfh(point_clouds)
+    fpfh(point_clouds, True, "./image_sets/kitchen", "kitchen")
 
