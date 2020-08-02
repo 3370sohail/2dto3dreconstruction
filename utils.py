@@ -2,6 +2,7 @@ import os
 import glob
 import argparse
 import matplotlib
+import math
 import csv
 import cv2
 import numpy as np
@@ -22,6 +23,17 @@ def read_depth_folder(path):
     imgs = [cv2.imread(file, cv2.IMREAD_GRAYSCALE) for file in files]
     return imgs
 
+def get_estimated_world_cords(height, width):
+    hfov_degrees, vfov_degrees = 57, 43
+    hFov = math.radians(hfov_degrees)
+    vFov = math.radians(vfov_degrees)
+    cx, cy = width / 2, height / 2
+    fx = width / (2 * math.tan(hFov / 2))
+    fy = height / (2 * math.tan(vFov / 2))
+    xx, yy = np.tile(range(width), height), np.repeat(range(height), width)
+    xx = (xx - cx) / fx
+    yy = (yy - cy) / fy
+    return xx, yy
 
 def depth_to_voxel(img, scale=1):
     """
@@ -49,6 +61,14 @@ def depth_to_voxel(img, scale=1):
 
     return pixels
 
+def posFromDepth(depth):
+    length = depth.shape[0] * depth.shape[1]
+
+    z = depth.reshape(length)
+
+    xx, yy = get_estimated_world_cords(depth.shape[0], depth.shape[1])
+
+    return np.dstack((xx * z, yy * z, z)).reshape((length, 3))
 
 def voxel_to_csv(points, path):
     """
@@ -95,7 +115,7 @@ def get_3d_kps(voxels, kps):
     kps_3d = []
     for i in kps:
         for v in voxels:
-            if (i[1] == v[0] and i[0] == v[1]):
+            if (i[0] == v[0] and i[1] == v[1]):
                 kps_3d.append(v)
                 break
 
