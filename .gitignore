@@ -1,5 +1,6 @@
 /__pycache__
 /models
+/data
 /*.h5
 /*.zip
 /.vscode
@@ -8,4 +9,6 @@
 *.jpg
 *.csv
 *.pcd
+*.pyc
 /.idea
+/dense_depth/__pycache__

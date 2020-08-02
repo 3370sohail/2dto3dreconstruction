@@ -113,7 +113,7 @@ def display_voxleiation(pcd):
 
 def display_ball_point(pcd):
     pcd1_temp = pcd #pcd.voxel_down_sample(voxel_size=0.5)
-    pcd1_temp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=5, max_nn=30))
+    pcd1_temp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     radii = [150, 150, 150, 150]
 
     distances = pcd1_temp.compute_nearest_neighbor_distance()
