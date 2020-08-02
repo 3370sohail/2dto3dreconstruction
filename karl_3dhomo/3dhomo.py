@@ -1,6 +1,8 @@
 import csv
 import time
 
+import os
+
 import cv2
 import numpy as np
 import open3d as o3d
@@ -41,7 +43,7 @@ def refine_matches(matches):
     :return: refined list of matches
     """
     matches = sorted(matches, key=lambda x: x.distance)
-    matches = matches[:20]
+    matches = matches[:10]
     return matches
 
 
@@ -276,24 +278,77 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
 
 
 if __name__ == "__main__":
-    # load RGB images
-    img1 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70.png"
-    img2 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72.png"
-    img1 = cv2.imread(img1)
-    img2 = cv2.imread(img2)
 
-    # load RGB point clouds
-    img1_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70_depth.png"
-    img2_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72_depth.png"
-    img1_depth = io.imread(img1_depth)
-    img2_depth = io.imread(img2_depth)
+    # 2 image example ##################################################################################################
 
-    # find transformation from first image to second image
-    img1_pts, img2_pts, homo = register_imgs(img1, img2, img1_depth, img2_depth, scale=.7)
+    # # load RGB images
+    # img1 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70.png"
+    # img2 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72.png"
+    # img1 = cv2.imread(img1)
+    # img2 = cv2.imread(img2)
+    #
+    # # load RGB point clouds
+    # img1_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70_depth.png"
+    # img2_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72_depth.png"
+    # img1_depth = io.imread(img1_depth)
+    # img2_depth = io.imread(img2_depth)
+    #
+    # # find transformation from first image to second image
+    # img1_pts, img2_pts, homo = register_imgs(img1, img2, img1_depth, img2_depth, scale=.7)
+    #
+    # # apply transformation
+    # img2_new = apply_points_transformation(img1_pts, homo)
+    #
+    # # save
+    # np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\img70_after_icp.csv",
+    #            img2_new, delimiter=",")
 
-    # apply transformation
-    img2_new = apply_points_transformation(img1_pts, homo)
+    # image sequence example ###########################################################################################
 
-    # save
-    np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\img70_after_icp.csv",
-               img2_new, delimiter=",")
+    folder = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen_small\kitchen_small_1"
+
+    # load rgb and depth images
+    imgs = []
+    depths = []
+
+    for i in [70, 71, 72]:
+        img_path = f"kitchen_small_1_{str(i)}.png"
+        img_path = os.path.join(folder, img_path)
+        img = cv2.imread(img_path)
+        imgs.append(img)
+
+        depth_path = f"kitchen_small_1_{str(i)}_depth.png"
+        depth_path = os.path.join(folder, depth_path)
+        depth = io.imread(depth_path)
+        depths.append(depth)
+
+    # perform global registration between every pair of images
+    homos = []
+    point_clouds = []
+
+    for i in range(len(imgs) - 1):
+        img1 = imgs[i]
+        img2 = imgs[i + 1]
+        depth1 = depths[i]
+        depth2 = depths[i + 1]
+
+        # global registration
+        pts1, pts2, transformation = register_imgs(img1, img2, depth1, depth2,
+                                                   scale=0.7,
+                                                   filter_pts_frac=0.04,
+                                                   partial_set_frac=0.7)
+
+        # store results
+        if i == 0:
+            point_clouds.append(pts1)
+        point_clouds.append(pts2)
+        homos.append(transformation)
+
+    # merge point clouds
+    pts = point_clouds[0]
+    for i in range(len(homos)):
+        pts = apply_points_transformation(pts, homos[i])
+        pts = np.concatenate((pts, point_clouds[i + 1]), axis=0)
+
+    np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\all.csv",
+               pts, delimiter=",")
