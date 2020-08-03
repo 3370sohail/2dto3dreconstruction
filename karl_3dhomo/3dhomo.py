@@ -1,9 +1,15 @@
+import csv
+import time
+
 import os
-from scipy import optimize
 
 import cv2
-import h5py
 import numpy as np
+import open3d as o3d
+from scipy import optimize
+from skimage import io
+
+from icp import icp
 
 
 def generate_keypoints_and_match(img1, img2):
@@ -23,7 +29,7 @@ def generate_keypoints_and_match(img1, img2):
     kp1, des1 = sift.detectAndCompute(img1, mask=None)
     kp2, des2 = sift.detectAndCompute(img2, mask=None)
 
-    matcher = cv2.BFMatcher(normType=cv2.NORM_L2)
+    matcher = cv2.BFMatcher(normType=cv2.NORM_L2, crossCheck=True)
     matches = matcher.match(des1, des2)
 
     return kp1, kp2, matches
@@ -31,24 +37,21 @@ def generate_keypoints_and_match(img1, img2):
 
 def refine_matches(matches):
     """
+    TODO: some other refinement method. Right now we are just taking the first couple of matches
 
     :param matches: list of matches
     :return: refined list of matches
     """
     matches = sorted(matches, key=lambda x: x.distance)
-
-    # good_matches = []
-    # for match in matches:
-    matches = matches[:4]
-
+    matches = matches[:10]
     return matches
 
 
 def pts_to_arr(pts, shape):
     """
-    Write points to csv file
+    Write points to image with shape shape
 
-    :param path: path to csv file to save to
+    :param pts: n x 3 ndarray, where the 3 is x y z coordinates
     :param shape: shape of image to write to
     :return: None
     """
@@ -76,50 +79,90 @@ def get_key_points_from_matches(kp1, kp2, matches):
     return p1, p2
 
 
-def LS_array_from_xi_eq(x, y, z):
+def depth_to_voxel(img, scale=1.):
+    """
+    Given a depth image, convert all the points in the image to 3D points
+
+    NOTE ON SCALE:
+        The values in 3D space are not necessarily to scale. For example a car might be a meter away in
+        real life, but on the depth map it only has a value of 10. We therefore need to give it a scale
+        value to multiply this depth by to get its actual depth in 3D space. This scale value can be
+        estimated by looking at how long or wide the actual object should be, and then scaling accordingly.
+
+    :param img: ndarray representing depth values in image
+    :param scale: how far away every value is--a number to multiply the depth values by
+    :return: n x 3 ndarray, where n is the number of 3D points, and each of the 3 represents the value
+             in that dimension
+    """
+    x = np.arange(img.shape[1])
+    y = np.arange(img.shape[0])
+    xx, yy = np.meshgrid(x, y)
+
+    # convert to n x 3
+    pixels = np.stack((xx, yy, img.astype(np.int16) * scale), axis=2)
+    pixels = np.reshape(pixels, (img.shape[0] * img.shape[1], 3))
+    pixels = pixels[pixels[:, 2] != 0]  # filter out missing data
+
+    return pixels
+
+
+def voxel_to_csv(points, path):
+    """
+    Write points to csv file
+
+    :param points: n x 3 ndarray
+    :param path: path to csv file to save to
+    :return: None
+    """
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=",")
+        writer.writerows(points)
+
+
+def ls_array_from_xi_eq(x, y, z):
     return np.array([x, y, z, 1, 0, 0, 0, 0, 0, 0, 0, 0])
 
 
-def LS_array_from_yi_eq(x, y, z):
+def ls_array_from_yi_eq(x, y, z):
     return np.array([0, 0, 0, 0, x, y, z, 1, 0, 0, 0, 0])
 
 
-def LS_array_from_zi_eq(x, y, z):
+def ls_array_from_zi_eq(x, y, z):
     return np.array([0, 0, 0, 0, 0, 0, 0, 0, x, y, z, 1])
 
 
-def make_homography_LS_matrix(img1_kp):
+def make_homography_ls_matrix(keypoints):
     """
     use the matches to make the homography liner system matrix
-    :param matches: pairs of matched points
-    :return: homography liner system matrix
+    :param keypoints:
+    :return: homography linear system matrix
     """
     a_matrix = []
 
-    for i in range(len(img1_kp)):
-        a_matrix.append(LS_array_from_xi_eq(img1_kp[i][0], img1_kp[i][1], img1_kp[i][2]))
-        a_matrix.append(LS_array_from_yi_eq(img1_kp[i][0], img1_kp[i][1], img1_kp[i][2]))
-        a_matrix.append(LS_array_from_zi_eq(img1_kp[i][0], img1_kp[i][1], img1_kp[i][2]))
+    for i in range(len(keypoints)):
+        a_matrix.append(ls_array_from_xi_eq(keypoints[i][0], keypoints[i][1], keypoints[i][2]))
+        a_matrix.append(ls_array_from_yi_eq(keypoints[i][0], keypoints[i][1], keypoints[i][2]))
+        a_matrix.append(ls_array_from_zi_eq(keypoints[i][0], keypoints[i][1], keypoints[i][2]))
 
     a_matrix = np.array(a_matrix, dtype=np.float32)
     return a_matrix
 
 
-def solve_homography_LS_matrix(A_matrix):
+def solve_homography_ls_matrix(a_matrix):
     """
     Solve the linear system to find the homography matrix
-    :param A_matrix: linear system to solve
+    :param a_matrix: linear system to solve
     :return: the homography matrix
     """
-    eigen_values, eigen_vectors = np.linalg.eig(np.dot(np.transpose(A_matrix), A_matrix))
+    eigen_values, eigen_vectors = np.linalg.eig(np.dot(np.transpose(a_matrix), a_matrix))
     h_hat = eigen_vectors[:, np.argmin(eigen_values)]
 
     # convert the h_hat vector into a matrix before returning it
     return h_hat.reshape(4, 4)
 
 
-def homo_rigid_transform_3D(img1_kp, img2_kp):
-    A = make_homography_LS_matrix(img1_kp)
+def homo_rigid_transform_3d(img1_kp, img2_kp):
+    A = make_homography_ls_matrix(img1_kp)
     b = img2_kp.flatten()
     return constrained_least_squares(A, b)
 
@@ -145,44 +188,65 @@ def get_transformed_points(points, h):
     return transformed[:, :3]
 
 
-if __name__ == "__main__":
-    # folder = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\aunt_jemima_original_syrup"
-    #
-    # # load images and depth
-    # depth = []
-    # imgs = []
-    # for i in range(0, 100, 3):
-    #
-    #     fname = os.path.join(folder, f"NP1_{str(i)}.h5")
-    #     with h5py.File(fname, "r") as f:
-    #         depth.append(f.get('depth')[:])
-    #
-    #     fname = fname.replace("h5", "jpg")
-    #     imgs.append(cv2.imread(fname))
-    #
-    # depth = np.array(depth)
-    # imgs = np.array(imgs)
+def make_pcd(point_cloud):
+    """
 
-    # load images
-    img1 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\car_pt_cloud\car1.jpg"
-    img2 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\car_pt_cloud\car2.jpg"
-    img1 = cv2.imread(img1)
-    img2 = cv2.imread(img2)
+    :param point_cloud:
+    :return:
+    """
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(point_cloud)
+    return pcd
 
-    # load point clouds
-    img1_pts = np.genfromtxt(
-        r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\car_pt_cloud\car_0.csv", delimiter=",")
-    img2_pts = np.genfromtxt(
-        r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\car_pt_cloud\car_1.csv", delimiter=",")
-    img1_depth = pts_to_arr(img1_pts, (img1.shape[0] // 2, img1.shape[1] // 2))
-    img2_depth = pts_to_arr(img2_pts, (img2.shape[0] // 2, img2.shape[1] // 2))
-    img1_depth = img1_depth.repeat(2, axis=0).repeat(2, axis=1)
-    img2_depth = img2_depth.repeat(2, axis=0).repeat(2, axis=1)
 
-    # find matches
-    kp1, kp2, matches = generate_keypoints_and_match(img1, img2)
+def apply_points_transformation(pts, transformation):
+    """
+    Apply a 3D homography transformation to a set of points
+
+    :param pts: n x 3 ndarray of points
+    :param transformation: 4 x 4 transformation array
+    :return: transformed n x 3 points
+    """
+    # add ones to convert to homogenous coordinates
+    ones = np.ones((pts.shape[0], 1))
+    pts = np.concatenate((pts, ones), axis=1)
+
+    pts = np.dot(transformation, pts.T).T
+    return pts[:, :3] / np.expand_dims(pts[:, 3], axis=1)
+
+
+def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_pts_frac=1., partial_set_frac=1.):
+    """
+    Perform global image registration given the RGB and depth of two images by
+
+        1. Performing global registration by extracting keypoints from RGB images
+        2.
+
+    :param img1_rgb: h x w x 3 image
+    :param img2_rgb: h x w x 3 image
+    :param img1_depth: h x w depth image
+    :param img2_depth: h x w depth image
+    :param scale: scaling factor for loading point clouds (see in-depth explanation in depth_to_voxel() function)
+    :param filter_pts_frac: fraction of all the points to use when performing ICP. Must be in range (0, 1], though
+                            choosing a good value would depend on the density of the depth we are working with.
+    :param partial_set_frac: fraction of expected overlap between the two images when performing ICP. Must be in
+                             range (0, 1]. In the case of video data, this value should usually be close to 1,
+                             though maybe not exactly 1, since we can expect a high overlap between frames of a
+                             video. Alternatively, if we are taking one frame from every couple of frames, this
+                             value should be slightly lower.
+    :return: image 1 point cloud,
+             image 2 point cloud,
+             4x4 transformation matrix that maps image 1 to image 2
+    """
+    # convert depth to point cloud
+    img1_pts = depth_to_voxel(img1_depth, scale=scale)
+    img2_pts = depth_to_voxel(img2_depth, scale=scale)
+
+    # find RGB matches
+    kp1, kp2, matches = generate_keypoints_and_match(img1_rgb, img2_rgb)
     matches = refine_matches(matches)
 
+    # # draw matches
     # img = cv2.drawMatches(img1, kp1, img2, kp2, matches, outImg=None,
     #                       flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
     # cv2.imshow("matches", img)
@@ -196,12 +260,95 @@ if __name__ == "__main__":
     img2_kp = np.array(img2_kp)
 
     # find transformation
-    h = homo_rigid_transform_3D(img1_kp, img2_kp)
-
-    # apply transformation
+    h = homo_rigid_transform_3d(img1_kp, img2_kp)
     img2_new = get_transformed_points(img1_pts, h)
 
-    # save
-    np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\car_pt_cloud\car_0_rigid3d.csv",
-               img2_new, delimiter=",")
+    # filter points (since we have a dense point cloud)
+    pts_idx1 = np.random.choice(img2_new.shape[0], int(img2_new.shape[0] * filter_pts_frac), replace=False)
+    pts_idx2 = np.random.choice(img2_pts.shape[0], int(img2_pts.shape[0] * filter_pts_frac), replace=False)
 
+    # ICP for fine registration
+    t, _, iter_to_converge = icp(img2_new[pts_idx1], img2_pts[pts_idx2],
+                                 tolerance=0.001,
+                                 max_iterations=100,
+                                 partial_set_size=partial_set_frac)
+
+    # return point clouds and transformation
+    return img1_pts, img2_pts, np.dot(h, t)
+
+
+if __name__ == "__main__":
+
+    # 2 image example ##################################################################################################
+
+    # # load RGB images
+    # img1 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70.png"
+    # img2 = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72.png"
+    # img1 = cv2.imread(img1)
+    # img2 = cv2.imread(img2)
+    #
+    # # load RGB point clouds
+    # img1_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_70_depth.png"
+    # img2_depth = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\kitchen_small_1_72_depth.png"
+    # img1_depth = io.imread(img1_depth)
+    # img2_depth = io.imread(img2_depth)
+    #
+    # # find transformation from first image to second image
+    # img1_pts, img2_pts, homo = register_imgs(img1, img2, img1_depth, img2_depth, scale=.7)
+    #
+    # # apply transformation
+    # img2_new = apply_points_transformation(img1_pts, homo)
+    #
+    # # save
+    # np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen\img70_after_icp.csv",
+    #            img2_new, delimiter=",")
+
+    # image sequence example ###########################################################################################
+
+    folder = r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\kitchen_small\kitchen_small_1"
+
+    # load rgb and depth images
+    imgs = []
+    depths = []
+
+    for i in [70, 71, 72]:
+        img_path = f"kitchen_small_1_{str(i)}.png"
+        img_path = os.path.join(folder, img_path)
+        img = cv2.imread(img_path)
+        imgs.append(img)
+
+        depth_path = f"kitchen_small_1_{str(i)}_depth.png"
+        depth_path = os.path.join(folder, depth_path)
+        depth = io.imread(depth_path)
+        depths.append(depth)
+
+    # perform global registration between every pair of images
+    homos = []
+    point_clouds = []
+
+    for i in range(len(imgs) - 1):
+        img1 = imgs[i]
+        img2 = imgs[i + 1]
+        depth1 = depths[i]
+        depth2 = depths[i + 1]
+
+        # global registration
+        pts1, pts2, transformation = register_imgs(img1, img2, depth1, depth2,
+                                                   scale=0.7,
+                                                   filter_pts_frac=0.04,
+                                                   partial_set_frac=0.7)
+
+        # store results
+        if i == 0:
+            point_clouds.append(pts1)
+        point_clouds.append(pts2)
+        homos.append(transformation)
+
+    # merge point clouds
+    pts = point_clouds[0]
+    for i in range(len(homos)):
+        pts = apply_points_transformation(pts, homos[i])
+        pts = np.concatenate((pts, point_clouds[i + 1]), axis=0)
+
+    np.savetxt(r"C:\Users\karlc\Documents\ut\_y4\CSC420\project\3d_reconstruction\imgs\all.csv",
+               pts, delimiter=",")
