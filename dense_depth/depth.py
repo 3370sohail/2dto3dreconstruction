@@ -4,6 +4,8 @@ import argparse
 import csv
 import cv2
 import numpy as np
+import re
+from PIL import Image
 
 
 def read_depth_folder(path):
@@ -103,8 +105,27 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
 from keras.models import load_model
 from dense_depth.layers import BilinearUpSampling2D
 from dense_depth.utils import predict, load_images, display_images
+from skimage.transform import resize
 
 from matplotlib import pyplot as plt
+
+def load_images_sort(image_files):
+    loaded_images = []
+    print(image_files)
+
+    filenames_in_order = ['' for x in range(len(image_files))]
+    for f in image_files:
+        regex = re.findall(r'\d+', f)
+        filenames_in_order[int(regex[-1]) -1] = f
+
+    print(filenames_in_order)
+    for file in filenames_in_order:
+
+        x = np.clip(np.asarray(Image.open( file ), dtype=float) / 255, 0, 1)
+        print(x.shape)
+        new_x = resize(x, (480, 640), anti_aliasing=True)
+        loaded_images.append(new_x)
+    return np.stack(loaded_images, axis=0)
 
 def get_depth(model, image_set, plot=False):
     """
@@ -130,7 +151,7 @@ def get_depth(model, image_set, plot=False):
 
 
     # Input images
-    inputs = load_images(glob.glob(image_set))
+    inputs = load_images_sort(glob.glob(image_set))
     print('\nLoaded ({0}) images of size {1}.'.format(inputs.shape[0], inputs.shape[1:]))
 
     # Compute results

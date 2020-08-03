@@ -5,10 +5,7 @@ import matplotlib
 import csv
 import cv2
 import numpy as np
-from skimage.feature import blob_dog, plot_matches, match_descriptors
 import open3d as o3d
-from tempfile import TemporaryFile
-import pickle
 
 
 def read_depth_folder(path):
@@ -107,9 +104,8 @@ def get_3d_kps(voxels, kps):
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
 from keras.models import load_model
 from layers import BilinearUpSampling2D
-from utils import predict, load_images, display_images
-import q8, q9, fpfh
-from matplotlib import pyplot as plt
+from utils.utils import predict, load_images
+import q8
 
 # Argument Parser
 parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')

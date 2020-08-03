@@ -5,7 +5,7 @@ import open3d as o3d
 
 import argparse
 
-import dense_depth.depth as dd
+import utils.rgbd as rgbd
 import utils.utils as utils
 import open3d_utils.fpfh as o3d_utils
 import homography_utils.q8 as q8
@@ -40,6 +40,15 @@ def make_3d_kps(point_clouds, np_kps_pre_img):
 
     """
     return [utils.get_3d_kps(point_clouds[i], np_kps_pre_img[i]) for i in range(len(np_kps_pre_img))]
+
+def make_3d_kps_depth_img(depth_images, np_kps_pre_img):
+    kps_3d = []
+
+    for i in range(len(depth_images)):
+        img_kp = [(p[0], p[1], depth_images[i][p[1], p[0]]) for p in np_kps_pre_img[i]]
+        kps_3d.append(img_kp)
+
+    return kps_3d
 
 def make_pcds(point_clouds, dump=False, dump_folder=None, image_set_name=None):
     """
@@ -114,25 +123,29 @@ def display_ball_point(pcd):
     o3d.visualization.draw_geometries([rec_mesh])
     o3d.io.write_triangle_mesh("copy_of_knot.ply", rec_mesh)
 
-def homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump=False, dump_folder=None, image_set_name=None):
+def homo3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump=False, dump_folder=None, image_set_name=None):
     pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
 
-    kps_3d = make_3d_kps(point_clouds, np_kps_pre_img)
+    kps_3d = make_3d_kps_depth_img(depth_images, np_kps_pre_img)
 
     all_results = []
     for i in range(1, len(pcds)):
         img1, kp1, des1 = rgb_images[i], cv_kps_pre_img[i], cv_des_pre_img[i]
         img2, kp2, des2 = rgb_images[i-1], cv_kps_pre_img[i-1], cv_des_pre_img[i-1]
 
-        bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, True)
+        bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2)
         H_matrix, matchs = q9.ransac_loop(img1, img2, kp1, kp2, bf_matches)
 
         m_kps1_3d = []
         m_kps2_3d = []
 
         for m in matchs:
-            m_kps1_3d.append(kps_3d[i][m[0]])
-            m_kps2_3d.append(kps_3d[i-1][m[1]])
+            tmp1 = kps_3d[i][m[0]]
+            tmp2 = kps_3d[i-1][m[1]]
+            if tmp1[2] == 0 or tmp2[2] == 0:
+                continue
+            m_kps1_3d.append(tmp2)
+            m_kps2_3d.append(tmp2)
 
         Hmatrix = homo3d.homo_rigid_transform_3D(np.array(m_kps1_3d), np.array(m_kps2_3d))
 
@@ -174,22 +187,15 @@ if __name__ == "__main__":
 
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
-    parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/toy/*.jpg', type=str, help='Input filename or folder.')
+
+    parser.add_argument('--input', default='./image_sets/car-d/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--depth', default='./image_sets/car-d/*.png', type=str, help='Trained Keras model file.')
     args = parser.parse_args()
 
-    rgb_images, depth_images = dd.get_depth(args.model, args.input)
-
-    fig, axs = plt.subplots(len(rgb_images), 2)
-    for i in range(len(rgb_images)):
-        axs[i, 0].imshow(rgb_images[i])
-        axs[i, 1].imshow(depth_images[i])
-
-    plt.show()
-
+    rgb_images, depth_images = rgbd.get_rgbd(args.input, args.depth, True)
 
     np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = get_kps_decs(rgb_images)
     point_clouds = depth_images_to_3d_pts(depth_images)
-    #fpfh(point_clouds, True, "./image_sets/kitchen", "kitchen")
-    homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, True, "./image_sets/toy", "toy")
+    #fpfh(point_clouds, True, "./image_sets/car-d", "car-d")
+    homo3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, True, "./image_sets/car-d", "car-d")
 

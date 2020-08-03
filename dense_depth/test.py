@@ -7,7 +7,7 @@ import matplotlib
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
 from keras.models import load_model
 from layers import BilinearUpSampling2D
-from utils import predict, load_images, display_images
+from utils.utils import predict, load_images, display_images
 from matplotlib import pyplot as plt
 
 # Argument Parser

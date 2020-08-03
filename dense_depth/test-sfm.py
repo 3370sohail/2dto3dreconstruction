@@ -1,15 +1,9 @@
 import os
 import glob
-import argparse
 import matplotlib
 import csv
-import cv2
-import numpy as np
-from skimage.feature import blob_dog, plot_matches, match_descriptors, ORB
 import open3d as o3d
 from skimage.measure import ransac
-from skimage.transform import FundamentalMatrixTransform
-
 
 
 def read_depth_folder(path):
@@ -125,8 +119,7 @@ def drawlines(img1,img2,lines,pts1,pts2):
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
 from keras.models import load_model
 from layers import BilinearUpSampling2D
-from utils import predict, load_images, display_images
-import q8, q9, fpfh, structure
+import q8, q9, structure
 from matplotlib import pyplot as plt
 
 

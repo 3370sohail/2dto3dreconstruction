@@ -4,14 +4,13 @@ import datetime
 
 import torch
 import torch.nn as nn
-import torch.nn.utils as utils
-import torchvision.utils as vutils    
+import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 
 from model import Model
 from loss import ssim
 from data import getTrainingTestingData
-from utils import AverageMeter, DepthNorm, colorize
+from utils.utils import AverageMeter, DepthNorm, colorize
 
 def main():
     # Arguments

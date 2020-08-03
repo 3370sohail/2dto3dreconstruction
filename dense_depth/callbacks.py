@@ -1,11 +1,9 @@
 import io
-import random
 import numpy as np
 from PIL import Image
 
 import keras
-from keras import backend as K
-from utils import DepthNorm, predict, evaluate
+from utils.utils import DepthNorm, predict, evaluate
 
 import tensorflow as tf
 

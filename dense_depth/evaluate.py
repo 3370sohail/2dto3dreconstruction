@@ -1,5 +1,4 @@
 import os
-import glob
 import time
 import argparse
 
@@ -8,8 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '5'
 from keras.models import load_model
 from layers import BilinearUpSampling2D
 from loss import depth_loss_function
-from utils import predict, load_images, display_images, evaluate
-from matplotlib import pyplot as plt
+from utils.utils import evaluate
 
 # Argument Parser
 parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
