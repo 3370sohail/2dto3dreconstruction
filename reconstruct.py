@@ -155,7 +155,7 @@ def homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i-1), pcds[i-1])
 
         # display_ball_point(pcds[i]+pcds[i-1])
-        combined_pcd = pcds[i]+pcds[i-1]
+        combined_pcd = pcds[i]
         combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
         poisson_mesh = create_from_point_cloud_poisson(combined_pcd)
         o3d.io.write_triangle_mesh('{}/{}_{}_poisson_mesh.ply'.format(dump_folder, image_set_name, i), poisson_mesh)
