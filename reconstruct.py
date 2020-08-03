@@ -154,7 +154,11 @@ def homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i].transform(Hmatrix))
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i-1), pcds[i-1])
 
-        display_ball_point(pcds[i]+pcds[i-1])
+        # display_ball_point(pcds[i]+pcds[i-1])
+        combined_pcd = pcds[i]+pcds[i-1]
+        combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+        poisson_mesh = create_from_point_cloud_poisson(combined_pcd)
+        o3d.io.write_triangle_mesh('{}/{}_{}_poisson_mesh.ply'.format(dump_folder, image_set_name, i), poisson_mesh)
         #display_voxleiation(pcds[i]+pcds[i-1])
         #display_alpha_mesh(pcds[i]+pcds[i-1])
 
@@ -164,6 +168,15 @@ def depth_images_to_3d_pts(depth_images):
 def depth_images_to_3d_pts_v2(depth_images):
     return [utils.posFromDepth(img) for img in depth_images]
 
+def create_from_point_cloud_poisson(pcd, doDisplay=True):
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+        pcd, depth=9)
+    vertices_to_remove = densities < np.quantile(densities, 0.01)
+    mesh.remove_vertices_by_mask(vertices_to_remove)
+    mesh.paint_uniform_color([1, 0.706, 0])
+    if doDisplay:
+        o3d.visualization.draw_geometries([mesh])
+    return mesh
 
 if __name__ == "__main__":
 
