@@ -69,19 +69,32 @@ def fpfh(point_clouds, dump=False, dump_folder=None, image_set_name=None):
     all_results = []
     for i in range(1, len(pcds)):
 
-        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i-1], 10, 30, 10, 100)
-        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 10, 30, 10, 100)
+        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 5, 10, 30, 25, 100)
+        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i-1], 5, 10, 30, 25, 100)
 
-        results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 10)
-        # results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 1)
+        #results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 20)
+        results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 5)
         o3d_utils.visualize_transformation(src_pcd, tar_pcd, results.transformation)
         print(results)
         print(results.transformation)
-        all_results.append(results)
+        all_results.append(results.transformation)
+
+    combined_pcd = pcds[0]
+    if dump:
+        o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, 0), pcds[0])
+    for i in range(1, len(pcds)):
+
+        for j in range(i, 0, -1):
+            pcds[i].transform(all_results[j - 1])
+
         if dump:
-            o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i-1), pcds[i-1].transform(results.transformation))
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i])
 
+        combined_pcd += pcds[i]
+
+    combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    poisson_mesh = create_from_point_cloud_poisson(combined_pcd)
+    o3d.io.write_triangle_mesh('{}/{}_{}_poisson_mesh.ply'.format(dump_folder, image_set_name, 20), poisson_mesh)
 
 def display_alpha_mesh(pcd):
     alpha = 0.03
@@ -155,7 +168,7 @@ def homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des
     #display_alpha_mesh(pcds[i]+pcds[i-1])
 
 def depth_images_to_3d_pts(depth_images):
-    return [utils.depth_to_voxel(img) for img in depth_images]
+    return [utils.depth_to_voxel(img, 1) for img in depth_images]
 
 def depth_images_to_3d_pts_v2(depth_images):
     return [utils.posFromDepth(img) for img in depth_images]
@@ -175,7 +188,8 @@ if __name__ == "__main__":
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
     parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/toy/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--mode', default='fpfh', type=str, help='method of reconstruction')
     args = parser.parse_args()
 
     rgb_images, depth_images = dd.get_depth(args.model, args.input)
@@ -190,6 +204,8 @@ if __name__ == "__main__":
 
     np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = get_kps_decs(rgb_images)
     point_clouds = depth_images_to_3d_pts(depth_images)
-    #fpfh(point_clouds, True, "./image_sets/kitchen", "kitchen")
-    homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, True, "./image_sets/toy", "toy")
+    if (args.mode == "fpfh"):
+        fpfh(point_clouds, True, "./image_sets/cars", "cars")
+    else:
+        homo3d_proc(point_clouds, rgb_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, True, "./image_sets/cars", "cars")
 
