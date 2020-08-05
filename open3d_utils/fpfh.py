@@ -24,7 +24,7 @@ def visualize_transformation(pcd1, pcd2, transformation):
     o3d.visualization.draw_geometries([pcd1_temp, pcd2_temp])
 
 
-def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius_feature, max_nn_feature, point_show_normal=True):
+def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius_feature, max_nn_feature, plot=True):
     """
 
     Args:
@@ -37,11 +37,10 @@ def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius
 
     """
     pcd_copy = pcd.voxel_down_sample(voxel_size=voxel_size)  # copy.deepcopy(pcd)
-    #pcd_copy.voxel_down_sample()
-    pcd_copy.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    #pcd_copy.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
     pcd_copy.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=max_nn_normal))
     print(pcd_copy.dimension)
-    if point_show_normal:
+    if plot:
         o3d.visualization.draw_geometries([pcd_copy], point_show_normal=True)
 
     pcd_fpfh = o3d.registration.compute_fpfh_feature(
@@ -53,12 +52,13 @@ def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius
 def execute_global_registration(source_down, target_down, source_fpfh,
                                 target_fpfh, voxel_size):
     distance_threshold = voxel_size * 1.5
+    rad = np.radians(5)
     print(":: RANSAC registration on downsampled point clouds.")
     print("   Since the downsampling voxel size is %.3f," % voxel_size)
     print("   we use a liberal distance threshold %.3f." % distance_threshold)
     result = o3d.registration.registration_ransac_based_on_feature_matching(
         source_down, target_down, source_fpfh, target_fpfh, distance_threshold,
-        o3d.registration.TransformationEstimationPointToPoint(False), 4, [
+        o3d.registration.TransformationEstimationPointToPoint(True), 4, [
             o3d.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.registration.CorrespondenceCheckerBasedOnDistance(
                 distance_threshold)
