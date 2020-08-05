@@ -37,7 +37,7 @@ def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius
 
     """
     pcd_copy = pcd.voxel_down_sample(voxel_size=voxel_size)  # copy.deepcopy(pcd)
-    #pcd_copy.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    # pcd_copy.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
     pcd_copy.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=max_nn_normal))
     print(pcd_copy.dimension)
     if plot:
@@ -65,14 +65,14 @@ def execute_global_registration(source_down, target_down, source_fpfh,
         ], o3d.registration.RANSACConvergenceCriteria(4000000, 500))
     return result
 
+
 def execute_fast_global_registration(source_down, target_down, source_fpfh,
                                      target_fpfh, voxel_size):
     distance_threshold = voxel_size * 1.5
     print(":: Apply fast global registration with distance threshold %.3f" \
-            % distance_threshold)
+          % distance_threshold)
     result = o3d.registration.registration_fast_based_on_feature_matching(
         source_down, target_down, source_fpfh, target_fpfh,
         o3d.registration.FastGlobalRegistrationOption(
             maximum_correspondence_distance=distance_threshold))
     return result
-
