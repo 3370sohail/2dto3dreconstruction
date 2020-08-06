@@ -83,7 +83,7 @@ def depth_to_voxel_ld(img, scale=1):
     xx, yy = np.meshgrid(x, y)
 
     # convert to n x 3
-    pixels = np.stack(((xx - c_x) * img / f_x, (xx - c_y) * img / f_y, img.astype(np.int16) * scale), axis=2)
+    pixels = np.stack(((xx - c_x) * img / f_x, (yy - c_y) * img / f_y, img.astype(np.int16) * scale), axis=2)
     pixels = np.reshape(pixels, (img.shape[0] * img.shape[1], 3))
     pixels = pixels[pixels[:, 2] != 0]  # filter out missing data
 

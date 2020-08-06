@@ -5,6 +5,7 @@ import numpy as np
 import open3d_utils.fpfh as o3d_utils
 import reconstruct as rec
 import utils.rgbd as rgbd
+import utils.utils as utils
 
 
 def depth_largobject(depth_img):
@@ -28,8 +29,8 @@ def depth_largobject(depth_img):
 
 
 def depth_images_to_3d_pts_ld(depth_images):
-    return [depth_largobject(img) for img in depth_images]
-    #return [utils.depth_to_voxel_ld(img) for img in depth_images]
+    #return [depth_largobject(img) for img in depth_images]
+    return [utils.depth_to_voxel_ld(img) for img in depth_images]
 
 
 if __name__ == "__main__":
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument('--surface', default='poisson', type=str, help='method of reconstruction')
     parser.add_argument('--dump', default='yes', type=str, help='method of reconstruction')
     parser.add_argument('--folder', default='./image_sets/sofa4', type=str, help='method of reconstruction')
-    parser.add_argument('--name', default='car-d', type=str, help='method of reconstruction')
+    parser.add_argument('--name', default='sofa', type=str, help='method of reconstruction')
     parser.add_argument('--plot', default='no', type=str, help='method of reconstruction')
     args = parser.parse_args()
 
