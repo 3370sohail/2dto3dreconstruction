@@ -61,6 +61,36 @@ def depth_to_voxel(img, scale=1):
 
     return pixels
 
+def depth_to_voxel_ld(img, scale=1):
+    """
+    Given a depth image, convert all the points in the image to 3D points
+
+    NOTE ON SCALE:
+        The values in 3D space are not necessarily to scale. For example a car might be a meter away in
+        real life, but on the depth map it only has a value of 10. We therefore need to give it a scale
+        value to multiply this depth by to get its actual depth in 3D space. This scale value can be
+        estimated by looking at how long or wide the actual object should be, and then scaling accordingly.
+
+    :param img: ndarray representing depth values in image
+    :param scale: how far away every value is--a number to multiply the depth values by
+    :return: n x 3 ndarray, where n is the number of 3D points, and each of the 3 represents the value
+             in that dimension
+    """
+    f_x = 525
+    f_y = 525
+    c_x = 319.5
+    c_y = 239.5
+    x = np.arange(img.shape[1])
+    y = np.arange(img.shape[0])
+    xx, yy = np.meshgrid(x, y)
+
+    # convert to n x 3
+    pixels = np.stack(((xx - c_x) * img / f_x, (xx - c_y) * img / f_y, img.astype(np.int16) * scale), axis=2)
+    pixels = np.reshape(pixels, (img.shape[0] * img.shape[1], 3))
+    pixels = pixels[pixels[:, 2] != 0]  # filter out missing data
+
+    return pixels
+
 def posFromDepth(depth):
     length = depth.shape[0] * depth.shape[1]
 

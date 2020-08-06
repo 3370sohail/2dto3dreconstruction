@@ -62,13 +62,13 @@ def execute_global_registration(source_down, target_down, source_fpfh,
             o3d.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
             o3d.registration.CorrespondenceCheckerBasedOnDistance(
                 distance_threshold)
-        ], o3d.registration.RANSACConvergenceCriteria(4000000, 500))
+        ], o3d.registration.RANSACConvergenceCriteria(5000000, 1000))
     return result
 
 
 def execute_fast_global_registration(source_down, target_down, source_fpfh,
                                      target_fpfh, voxel_size):
-    distance_threshold = voxel_size * 1.5
+    distance_threshold = voxel_size
     print(":: Apply fast global registration with distance threshold %.3f" \
           % distance_threshold)
     result = o3d.registration.registration_fast_based_on_feature_matching(

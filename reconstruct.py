@@ -69,8 +69,8 @@ def make_pcds(point_clouds, dump=False, dump_folder=None, image_set_name=None):
     """
     pcds = []
     for i in range(len(point_clouds)):
-        if dump:
-            utils.voxel_to_csv(point_clouds[i], '{}/{}_{}.csv'.format(dump_folder, image_set_name, i))
+        #if dump:
+        #    utils.voxel_to_csv(point_clouds[i], '{}/{}_{}.csv'.format(dump_folder, image_set_name, i))
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(point_clouds[i])
         pcds.append(pcd)
@@ -107,27 +107,29 @@ def display_alpha_mesh(pcd):
     o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
 
-def display_voxleiation(pcd):
+def display_voxleiation(pcd, plot):
     print('voxelization')
-    N = 20000
-    pcd.colors = o3d.utility.Vector3dVector(np.random.uniform(0, 1, size=(N, 3)))
+    #N = 20000
+    #pcd.colors = o3d.utility.Vector3dVector(np.random.uniform(0, 1, size=(N, 3)))
     voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,
-                                                                voxel_size=0.2)
-    o3d.visualization.draw_geometries([voxel_grid])
+                                                                voxel_size=1)
+    if plot:
+        o3d.visualization.draw_geometries([voxel_grid])
+
 
 
 def apply_ball_point(pcd, plot=True):
     print("applying ball point surface reconstruction")
-    pcd1_temp = pcd  # pcd.voxel_down_sample(voxel_size=0.5)
+    pcd1_temp = pcd
     pcd1_temp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    radii = [150, 150, 150, 150]
 
+    # idea for avg distance from https://stackoverflow.com/questions/56965268/how-do-i-convert-a-3d-point-cloud-ply-into-a-mesh-with-faces-and-vertices
     distances = pcd1_temp.compute_nearest_neighbor_distance()
     avg_dist = np.mean(distances)
-    radius = 1.5 * avg_dist
+    radius = avg_dist
 
     rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd1_temp, o3d.utility.DoubleVector(
-        [radius, radius * 2]))
+        [radius, radius * 1.5, radius * 2]))
     rec_mesh.paint_uniform_color([1, 0.706, 0])
     if plot:
         o3d.visualization.draw_geometries([rec_mesh])
@@ -136,8 +138,9 @@ def apply_ball_point(pcd, plot=True):
 
 def apply_poisson(pcd, plot=True):
     print("applying poisson surface reconstruction")
+    pcd = pcd.voxel_down_sample(voxel_size=1)
     mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-        pcd, depth=9)
+        pcd, depth=10)
     vertices_to_remove = densities < np.quantile(densities, 0.01)
     mesh.remove_vertices_by_mask(vertices_to_remove)
     mesh.paint_uniform_color([1, 0.706, 0])
@@ -174,12 +177,16 @@ def chain_transformation(pcds, transformations, dump=False, dump_folder=None, im
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i])
 
         combined_pcd += pcds[i]
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=2)
+        print("donwsmapling ", i, print(combined_pcd.dimension))
 
+    o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, "final"), combined_pcd)
     combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     if poisson:
         mesh = apply_poisson(combined_pcd, plot)
         name = 'poisson'
     else:
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=10)
         mesh = apply_ball_point(combined_pcd, plot)
         name = 'ball_point'
 
@@ -268,9 +275,9 @@ if __name__ == "__main__":
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
     parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/kitchen2/*.png', type=str, help='Input filename or folder.')
-    parser.add_argument('--mode', default='homo', type=str, help='method of reconstruction')
-    parser.add_argument('--surface', default='poisson', type=str, help='method of reconstruction')
+    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--mode', default='fpfh', type=str, help='method of reconstruction')
+    parser.add_argument('--surface', default='ball', type=str, help='method of reconstruction')
     parser.add_argument('--dump', default='yes', type=str, help='method of reconstruction')
     parser.add_argument('--folder', default='./image_sets/cars', type=str, help='method of reconstruction')
     parser.add_argument('--name', default='cars', type=str, help='method of reconstruction')

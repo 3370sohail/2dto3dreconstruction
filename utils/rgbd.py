@@ -36,9 +36,9 @@ def get_image_set(image_set, depth=False, scale=1):
     return np.stack(loaded_images, axis=0)
 
 
-def get_rgbd(images, depths, plot=False):
+def get_rgbd(images, depths, plot=False, scale=1):
     rgb_images = get_image_set(images)
-    depth_images = get_image_set(depths, True, 0.1)
+    depth_images = get_image_set(depths, True, scale)
     if plot:
         fig, axs = plt.subplots(len(rgb_images), 2)
         for i in range(len(rgb_images)):
