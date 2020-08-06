@@ -6,6 +6,10 @@ Modified by us to
     2. Modified the operations in the code to run faster. Since the code from the GitHub was mostly vectorized
        already, the main difference here is we know how many dimensions we are dealing with at all times since
        we are doing 3D ICP and not n-dimensional ICP, so we can avoid a lot of array slicing in the original code.
+
+A quick diff check from Python's difflib's SequenceMatcher shows that our version of this ICP implementation
+has roughly a 64% overlap with the original implementation on GitHub, so although there are many parts where we
+are just borrowing code, we have still made some significant changes.
 """
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -92,6 +96,7 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001, partial_set_si
     prev_error = 0
     distances = None
     iters = 1
+
     while iters <= max_iterations:
         # find the nearest neighbors between the current source and destination points
         distances, indices = nearest_neighbor(src[:3, :].T, dst[:3, :].T)
@@ -105,10 +110,10 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001, partial_set_si
         src_smallest = src[:3, smallest_idx]
 
         # compute the transformation between the current source and nearest destination points
-        t = best_fit_transform(src_smallest[:3, :].T, dst[:3, indices].T)
+        T = best_fit_transform(src_smallest[:3, :].T, dst[:3, indices].T)
 
         # update the current source
-        src = np.dot(t, src)
+        src = np.dot(T, src)
 
         # check error
         mean_error = np.mean(distances)
@@ -119,6 +124,6 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001, partial_set_si
         iters += 1
 
     # calculate final transformation
-    t = best_fit_transform(A, src[:3, :].T)
+    T = best_fit_transform(A, src[:3, :].T)
 
-    return t, distances, iters
+    return T, distances, iters

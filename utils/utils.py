@@ -1,15 +1,10 @@
-import os
-import glob
-import argparse
-import matplotlib
-import math
 import csv
+import math
+import os
+
 import cv2
 import numpy as np
-from skimage.feature import blob_dog, plot_matches, match_descriptors
-import open3d as o3d
-from tempfile import TemporaryFile
-import pickle
+
 
 def read_depth_folder(path):
     """
@@ -23,6 +18,7 @@ def read_depth_folder(path):
     imgs = [cv2.imread(file, cv2.IMREAD_GRAYSCALE) for file in files]
     return imgs
 
+
 def get_estimated_world_cords(height, width):
     hfov_degrees, vfov_degrees = 57, 43
     hFov = math.radians(hfov_degrees)
@@ -34,6 +30,7 @@ def get_estimated_world_cords(height, width):
     xx = (xx - cx) / fx
     yy = (yy - cy) / fy
     return xx, yy
+
 
 def depth_to_voxel(img, scale=1):
     """
@@ -60,6 +57,7 @@ def depth_to_voxel(img, scale=1):
     pixels = pixels[pixels[:, 2] != 0]  # filter out missing data
 
     return pixels
+
 
 def depth_to_voxel_ld(img, scale=1):
     """
@@ -91,6 +89,7 @@ def depth_to_voxel_ld(img, scale=1):
 
     return pixels
 
+
 def posFromDepth(depth):
     length = depth.shape[0] * depth.shape[1]
 
@@ -99,6 +98,7 @@ def posFromDepth(depth):
     xx, yy = get_estimated_world_cords(depth.shape[0], depth.shape[1])
 
     return np.dstack((xx * z, yy * z, z)).reshape((length, 3))
+
 
 def voxel_to_csv(points, path):
     """

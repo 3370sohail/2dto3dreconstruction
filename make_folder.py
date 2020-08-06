@@ -1,5 +1,6 @@
 import os
 
+
 def rename_move(src, dst, type):
     """
     function to make rgb d to a single folder and in the correct naming

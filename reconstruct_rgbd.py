@@ -109,5 +109,4 @@ if __name__ == "__main__":
                          args.folder, args.name, poisson, plot)
     else:
         np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = rec.get_kps_decs(rgb_images)
-        rec.homo3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump,
-                        args.folder, args.name, poisson, plot)
+        rec.trans3d_proc(point_clouds, rgb_images, depth_images, dump, args.folder, args.name, poisson, plot)
