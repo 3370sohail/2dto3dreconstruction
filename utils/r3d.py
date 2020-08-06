@@ -2,6 +2,10 @@
 Rigid 3D Transformation
 ----------------------------------------------------------------------------------------------------------------
 
+adapted from https://github.com/nghiaho12/rigid_transform_3D
+
+"Least-Squares Fitting of Two 3-D Point Sets", Arun, K. S. and Huang, T. S. and Blostein, S. D,
+IEEE Transactions on Pattern Analysis and Machine Intelligence, Volume 9 Issue 5, May 1987
 
 """
 
