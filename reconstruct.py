@@ -196,6 +196,13 @@ def chain_transformation(pcds, transformations, save_intermediate=False, out_fol
     :param plot: True to plot intermediate results when running algorithm, False otherwise
     :return: None, images will be saved to the out_folder
     """
+    # pre-compute transformations, so that the entire chain transformation operation is O(p * n) instead of
+    # O(p* n^2), where p is the maximum number of points in a point cloud and n is the number of transformations
+    pre_computed = [transformations[0]]
+    for i in range(1, len(transformations)):
+        t = np.dot(transformations[i], pre_computed[-1])
+        pre_computed.append(t)
+
     combined_pcd = pcds[0]
 
     if save_intermediate:
@@ -203,12 +210,12 @@ def chain_transformation(pcds, transformations, save_intermediate=False, out_fol
 
     # merge point clouds using transformation matrices
     for i in range(1, len(pcds)):
-        for j in range(i, 0, -1):
-            pcds[i].transform(transformations[j - 1])
+        pcds[i].transform(pre_computed[i - 1])
 
         if save_intermediate:
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(out_folder, image_set_name, i), pcds[i])
 
+        # downsample after merging by voxel radius so point clouds aren't too large and redundant
         combined_pcd += pcds[i]
         combined_pcd = combined_pcd.voxel_down_sample(voxel_size=2)
 
