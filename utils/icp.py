@@ -1,14 +1,18 @@
 """
+ICP algorithm
+----------------------------------------------------------------------------------------------------------------
+
 Most of this code from https://github.com/ClayFlannigan/icp/blob/master/icp.py
 
 Modified by us to
-    1. Not match 100% of points (ie. partial match)
-    2. Modified the operations in the code to run faster. Since the code from the GitHub was mostly vectorized
+    1. Be able to take in and perform ICP on point clouds of different sizes
+    2. Not match 100% of points (ie. partial match)
+    3. Make operations in the code to run faster. Since the code from the GitHub was mostly vectorized
        already, the main difference here is we know how many dimensions we are dealing with at all times since
        we are doing 3D ICP and not n-dimensional ICP, so we can avoid a lot of array slicing in the original code.
 
 A quick diff check from Python's difflib's SequenceMatcher shows that our version of this ICP implementation
-has roughly a 64% overlap with the original implementation on GitHub, so although there are many parts where we
+has roughly a 62% overlap with the original implementation on GitHub, so although there are many parts where we
 are just borrowing code, we have still made some significant changes.
 """
 import numpy as np

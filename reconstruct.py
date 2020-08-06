@@ -5,12 +5,12 @@ import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
 
+# import dense_depth.depth as dd
 import homography_utils.q8 as q8
 import homography_utils.q9 as q9
 import open3d_utils.fpfh as o3d_utils
 import utils.r3d as r3d
 import utils.transformation3d as trans3d
-import dense_depth.depth as dd
 import utils.utils as utils
 
 
@@ -61,21 +61,16 @@ def make_3d_kps_depth_img(depth_images, np_kps_pre_img):
     return kps_3d
 
 
-def make_pcds(point_clouds, save_intermediate=False, out_folder=None, image_set_name=None):
+def make_pcds(point_clouds):
     """
     Create Open3D PCD objects from list of point clouds
 
     :param point_clouds: list of (n, 3) ndarrays, where the 3 represents the x y z of each point
-    :param save_intermediate: True to save the intermediate point clouds as lists of points before converting to PCD
-    :param out_folder: folder to save point clouds (CSVs) to
-    :param image_set_name: name root for point clouds (CSVs)
     :return: generated PCDs
     """
     pcds = []
 
     for i in range(len(point_clouds)):
-        if save_intermediate:
-            utils.voxel_to_csv(point_clouds[i], '{}/{}_{}.csv'.format(out_folder, image_set_name, i))
 
         # convert from ndarray to PCD
         pcd = o3d.geometry.PointCloud()
@@ -85,7 +80,8 @@ def make_pcds(point_clouds, save_intermediate=False, out_folder=None, image_set_
     return pcds
 
 
-def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image_set_name=None, poisson=True, plot=True):
+def fpfh(point_clouds, voxel_ds_size=10, fast=False, save_intermediate=False, out_folder=None, image_set_name=None,
+         poisson=True, plot=True):
     """
     Global point cloud registration using Fast Point Feature Histogram (FPFH), using Open3D's
 
@@ -97,7 +93,7 @@ def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image
     results from these complex algorithms.
 
     :param point_clouds: list of (l x w, 3) point clouds
-    :param voxel: the size of the voxel to down sample
+    :param voxel_ds_size: the size of the voxel to down sample
     :param fast: True to run fast global registration, RANSAC other wise
     :param save_intermediate: True to save the intermediate point clouds when registering many point clouds
     :param out_folder: folder to save point clouds (CSVs and PCDs) and meshes (PLYs) to
@@ -108,18 +104,18 @@ def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image
     :return: None, images will be saved to the out_folder
     """
 
-    pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
+    pcds = make_pcds(point_clouds)
     all_results = []
     for i in range(1, len(pcds)):
-        norm_radius = voxel * 2
-        fpfh_radius = voxel * 5
-        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], voxel, norm_radius, 30, fpfh_radius, 100, plot)
-        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i - 1], voxel, norm_radius, 30, fpfh_radius, 100, plot)
+        norm_radius = voxel_ds_size * 2
+        fpfh_radius = voxel_ds_size * 5
+        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], voxel_ds_size, norm_radius, 30, fpfh_radius, 100, plot)
+        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i - 1], voxel_ds_size, norm_radius, 30, fpfh_radius, 100, plot)
 
         if fast:
-            results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel)
+            results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel_ds_size)
         else:
-            results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel)
+            results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel_ds_size)
 
         if plot:
             o3d_utils.visualize_transformation(src_pcd, tar_pcd, results.transformation)
@@ -127,7 +123,7 @@ def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image
         print(results.transformation)
         all_results.append(results.transformation)
 
-    chain_transformation(pcds, all_results, dump, dump_folder, image_set_name, poisson, plot)
+    chain_transformation(pcds, all_results, save_intermediate, out_folder, image_set_name, poisson, plot)
 
 
 def apply_ball_point(pcd, plot=True):
@@ -254,7 +250,7 @@ def rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_
     :param plot: True to plot intermediate results when running algorithm, False otherwise
     :return: None, images will be saved to the out_folder
         """
-    pcds = make_pcds(point_clouds, save_intermediate, out_folder, image_set_name)
+    pcds = make_pcds(point_clouds)
     kps_3d = make_3d_kps_depth_img(depth_images, np_kps_pre_img)
     all_results = []
 
@@ -310,7 +306,7 @@ def trans3d_proc(point_clouds, rgb_images, depth_images, save_intermediate=False
     :param partial_set_frac: see trans3d.register_imgs() for documentation. The default value is what we found works
     :return: None, images will be saved to the out_folder
     """
-    pcds = make_pcds(point_clouds, save_intermediate, out_folder, image_set_name)
+    pcds = make_pcds(point_clouds)
     all_results = []
 
     # perform global registration between every 2 consecutive images
@@ -342,66 +338,89 @@ def depth_images_to_3d_pts(depth_images, scale=1.):
     return [utils.depth_to_voxel(img, scale) for img in depth_images]
 
 
-def depth_images_to_3d_pts_v2(depth_images):
+def depth_images_to_3d_pts_ld(depth_images):
     """
     Convert list of depth images to 3D points
 
     :param depth_images: list of (l, w, 1) depth images
     :return: list of (l x w, 3) ndarrays
     """
-    return [utils.posFromDepth(img) for img in depth_images]
+    return [utils.depth_to_voxel_ld(img) for img in depth_images]
 
 
 if __name__ == "__main__":
 
     # Argument Parser
-    parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
-    parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
-    parser.add_argument('--mode', default='fpfh', type=str, help='method of reconstruction')
-    parser.add_argument('--voxel', default=5, type=int, help='method of reconstruction')
-    parser.add_argument('--fast', default='no', type=str, help='method of reconstruction')
-    parser.add_argument('--surface', default='poisson', type=str, help='method of reconstruction')
-    parser.add_argument('--dump', default='yes', type=str, help='method of reconstruction')
-    parser.add_argument('--folder', default='./image_sets/cars', type=str, help='method of reconstruction')
-    parser.add_argument('--name', default='cars', type=str, help='method of reconstruction')
-    parser.add_argument('--plot', default='no', type=str, help='method of reconstruction')
+    parser = argparse.ArgumentParser(description='Depth Generation, Point Cloud Registration, '
+                                                 'and 3D Model Reconstruction')
+
+    parser.add_argument('--model', default='./models/nyu.h5', type=str,
+                        help='Trained Keras model file')
+    parser.add_argument('--rgb', default='./image_sets/cars/*.jpg', type=str,
+                        help='Input filename or folder for RGB images')
+
+    parser.add_argument('--mode', default='fpfh', type=str, choices=['fpfh', 'rigid3d', '3dhomo'],
+                        help='Global registration method')
+    parser.add_argument('--voxel', default=5, type=int,
+                        help='Size of voxel to downsample for FPFH. Do not use if not using FPFH for mode option.')
+    parser.add_argument('--fast', action="store_true",
+                        help='Enable to use fast global registration for FPFH. Do not use if not using FPFH for '
+                             'mode option')
+
+    parser.add_argument('--surface', default='poisson', type=str, choices=['poisson', 'ball_point'],
+                        help='Method of generating surface mesh')
+
+    parser.add_argument('--save_intermediate', action='store_true',
+                        help='Enable to store intermediate results (in out_folder)')
+    parser.add_argument('--out_folder', default='./image_sets/cars', type=str,
+                        help='Path to folder to save generated point clouds and meshes in')
+    parser.add_argument('--out_name', default='cars', type=str,
+                        help='Name of image set to save as')
+    parser.add_argument('--plot', action='store_true',
+                        help='Enable to plot intermediate results in pipeline')
 
     args = parser.parse_args()
 
     rgb_images, depth_images = dd.get_depth(args.model, args.input)
 
-    plot = False
-    if args.plot == "yes":
-        plot = True
-
-    if plot:
+    # plot generated depth images
+    if args.plot:
         fig, axs = plt.subplots(len(rgb_images), 2)
         for i in range(len(rgb_images)):
             axs[i, 0].imshow(rgb_images[i])
             axs[i, 1].imshow(depth_images[i])
-
         plt.show()
 
-    poisson = False
-    if args.surface == "poisson":
-        poisson = True
-
-    dump = False
-    if args.dump == "yes":
-        dump = True
-
-    fast = False
-    if args.fast == 'yes':
-        fast = True
-
-    np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = get_kps_decs(rgb_images)
+    poisson = args.surface == "poisson"
     point_clouds = depth_images_to_3d_pts(depth_images)
-    if (args.mode == "fpfh"):
-        # fast voxel = 5 ransac voxel = 10
-        fpfh(point_clouds, args.voxel, fast, dump, args.folder, args.name, poisson, plot)
-    elif (args.mode == "rigid3d"):
-        rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump,
-                     args.folder, args.name, poisson, plot)
+
+    if args.mode == "fpfh":
+        # fast voxel = 10 ransac voxel = 20
+        fpfh(point_clouds,
+             voxel_ds_size=args.voxel,
+             fast=args.fast,
+             save_intermediate=args.save_intermediate,
+             out_folder=args.out_folder,
+             image_set_name=args.out_name,
+             poisson=poisson,
+             plot=args.plot)
+
+    elif args.mode == "rigid3d":
+        np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = get_kps_decs(rgb_images)
+        rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img,
+                     save_intermediate=args.save_intermediate,
+                     out_folder=args.out_folder,
+                     image_set_name=args.out_name,
+                     poisson=poisson,
+                     plot=args.plot)
+
+    elif args.mode == "3dhomo":
+        trans3d_proc(point_clouds, rgb_images, depth_images,
+                     save_intermediate=args.save_intermediate,
+                     out_folder=args.out_folder,
+                     image_set_name=args.out_name,
+                     poisson=poisson,
+                     plot=args.plot)
+
     else:
-        trans3d_proc(point_clouds, rgb_images, depth_images, dump, args.folder, args.name, poisson, plot)
+        raise Exception("Not a valid reconstruction method!")
