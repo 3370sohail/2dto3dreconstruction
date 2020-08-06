@@ -40,13 +40,11 @@ def get_kps_decs(rgb_images):
 
 def make_3d_kps(point_clouds, np_kps_pre_img):
     """
+    Find corresponding 3D points for point clouds
 
-    Args:
-        point_clouds:
-        np_kps_pre_img:
-
-    Returns:
-
+    :param point_clouds: list of (n, 3) ndarrays, where the 3 represents the x y z of each point
+    :param np_kps_pre_img: list of keypoints in ndarray format
+    :return: list of 3D keypoints
     """
     return [utils.get_3d_kps(point_clouds[i], np_kps_pre_img[i]) for i in range(len(np_kps_pre_img))]
 
@@ -355,7 +353,7 @@ if __name__ == "__main__":
                                                  'and 3D Model Reconstruction')
 
     parser.add_argument('--model', default='./models/nyu.h5', type=str,
-                        help='Trained Keras model file')
+                        help='Trained Keras model file. Requires TensorFlow and Keras.')
     parser.add_argument('--rgb', default='./image_sets/cars/*.jpg', type=str,
                         help='Input filename or folder for RGB images')
 
