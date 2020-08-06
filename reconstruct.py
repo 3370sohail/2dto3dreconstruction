@@ -1,17 +1,18 @@
-import numpy as np
-import cv2
-from matplotlib import pyplot as plt
-import open3d as o3d
-
 import argparse
 
-import dense_depth.depth as dd
-import utils.utils as utils
-import open3d_utils.fpfh as o3d_utils
+import cv2
+import numpy as np
+import open3d as o3d
+from matplotlib import pyplot as plt
+
 import homography_utils.q8 as q8
 import homography_utils.q9 as q9
-import homo3d
+import open3d_utils.fpfh as o3d_utils
 import utils.r3d as r3d
+import utils.transformation3d as trans3d
+# import dense_depth.depth as dd
+import utils.utils as utils
+from utils.icp import icp
 
 
 def get_kps_decs(rgb_images):
@@ -69,8 +70,8 @@ def make_pcds(point_clouds, dump=False, dump_folder=None, image_set_name=None):
     """
     pcds = []
     for i in range(len(point_clouds)):
-        #if dump:
-        #    utils.voxel_to_csv(point_clouds[i], '{}/{}_{}.csv'.format(dump_folder, image_set_name, i))
+        if dump:
+            utils.voxel_to_csv(point_clouds[i], '{}/{}_{}.csv'.format(dump_folder, image_set_name, i))
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(point_clouds[i])
         pcds.append(pcd)
@@ -107,29 +108,27 @@ def display_alpha_mesh(pcd):
     o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
 
-def display_voxleiation(pcd, plot):
+def display_voxleiation(pcd):
     print('voxelization')
-    #N = 20000
-    #pcd.colors = o3d.utility.Vector3dVector(np.random.uniform(0, 1, size=(N, 3)))
+    N = 20000
+    pcd.colors = o3d.utility.Vector3dVector(np.random.uniform(0, 1, size=(N, 3)))
     voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd,
-                                                                voxel_size=1)
-    if plot:
-        o3d.visualization.draw_geometries([voxel_grid])
-
+                                                                voxel_size=0.2)
+    o3d.visualization.draw_geometries([voxel_grid])
 
 
 def apply_ball_point(pcd, plot=True):
     print("applying ball point surface reconstruction")
-    pcd1_temp = pcd
+    pcd1_temp = pcd  # pcd.voxel_down_sample(voxel_size=0.5)
     pcd1_temp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    radii = [150, 150, 150, 150]
 
-    # idea for avg distance from https://stackoverflow.com/questions/56965268/how-do-i-convert-a-3d-point-cloud-ply-into-a-mesh-with-faces-and-vertices
     distances = pcd1_temp.compute_nearest_neighbor_distance()
     avg_dist = np.mean(distances)
-    radius = avg_dist
+    radius = 1.5 * avg_dist
 
     rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(pcd1_temp, o3d.utility.DoubleVector(
-        [radius, radius * 1.5, radius * 2]))
+        [radius, radius * 2]))
     rec_mesh.paint_uniform_color([1, 0.706, 0])
     if plot:
         o3d.visualization.draw_geometries([rec_mesh])
@@ -138,9 +137,8 @@ def apply_ball_point(pcd, plot=True):
 
 def apply_poisson(pcd, plot=True):
     print("applying poisson surface reconstruction")
-    pcd = pcd.voxel_down_sample(voxel_size=1)
     mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-        pcd, depth=10)
+        pcd, depth=9)
     vertices_to_remove = densities < np.quantile(densities, 0.01)
     mesh.remove_vertices_by_mask(vertices_to_remove)
     mesh.paint_uniform_color([1, 0.706, 0])
@@ -177,16 +175,12 @@ def chain_transformation(pcds, transformations, dump=False, dump_folder=None, im
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, i), pcds[i])
 
         combined_pcd += pcds[i]
-        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=2)
-        print("donwsmapling ", i, print(combined_pcd.dimension))
 
-    o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(dump_folder, image_set_name, "final"), combined_pcd)
     combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     if poisson:
         mesh = apply_poisson(combined_pcd, plot)
         name = 'poisson'
     else:
-        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=10)
         mesh = apply_ball_point(combined_pcd, plot)
         name = 'ball_point'
 
@@ -232,38 +226,26 @@ def rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_
 
 
 def homo3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump=False,
-                dump_folder=None, image_set_name=None, poisson=True, plot=True):
+                dump_folder=None, image_set_name=None, poisson=True, plot=True, filter_pts_frac=0.1,
+                partial_set_frac=0.7):
     pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
-
-    kps_3d = make_3d_kps_depth_img(depth_images, np_kps_pre_img)
 
     all_results = []
     for i in range(1, len(pcds)):
-        img1, kp1, des1 = rgb_images[i], cv_kps_pre_img[i], cv_des_pre_img[i]
-        img2, kp2, des2 = rgb_images[i - 1], cv_kps_pre_img[i - 1], cv_des_pre_img[i - 1]
-
-        bf_matches = q8.mathching_skimage(img1, kp1, des1, img2, kp2, des2, plot)
-        H_matrix, matchs = q9.ransac_loop(img1, img2, kp1, kp2, bf_matches)
-
-        m_kps1_3d = []
-        m_kps2_3d = []
-
-        for m in matchs:
-            m_kps1_3d.append(kps_3d[i][m[0]])
-            m_kps2_3d.append(kps_3d[i - 1][m[1]])
-
-        Hmatrix = homo3d.homo_rigid_transform_3D(np.array(m_kps1_3d), np.array(m_kps2_3d))
+        _, _, h = trans3d.register_imgs(rgb_images[i], rgb_images[i - 1], depth_images[i], depth_images[i - 1],
+                                        img1_pts=point_clouds[i], img2_pts=point_clouds[i - 1],
+                                        filter_pts_frac=filter_pts_frac, partial_set_frac=partial_set_frac)
 
         if plot:
-            o3d_utils.visualize_transformation(pcds[i], pcds[i - 1], Hmatrix)
-        print(Hmatrix)
-        all_results.append(Hmatrix)
+            o3d_utils.visualize_transformation(pcds[i], pcds[i - 1], h)
+        print(h)
+        all_results.append(h)
 
     chain_transformation(pcds, all_results, dump, dump_folder, image_set_name, poisson, plot)
 
 
-def depth_images_to_3d_pts(depth_images):
-    return [utils.depth_to_voxel(img, 1) for img in depth_images]
+def depth_images_to_3d_pts(depth_images, scale=1.):
+    return [utils.depth_to_voxel(img, scale) for img in depth_images]
 
 
 def depth_images_to_3d_pts_v2(depth_images):
@@ -275,9 +257,9 @@ if __name__ == "__main__":
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
     parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
-    parser.add_argument('--mode', default='fpfh', type=str, help='method of reconstruction')
-    parser.add_argument('--surface', default='ball', type=str, help='method of reconstruction')
+    parser.add_argument('--input', default='./image_sets/kitchen2/*.png', type=str, help='Input filename or folder.')
+    parser.add_argument('--mode', default='homo', type=str, help='method of reconstruction')
+    parser.add_argument('--surface', default='poisson', type=str, help='method of reconstruction')
     parser.add_argument('--dump', default='yes', type=str, help='method of reconstruction')
     parser.add_argument('--folder', default='./image_sets/cars', type=str, help='method of reconstruction')
     parser.add_argument('--name', default='cars', type=str, help='method of reconstruction')

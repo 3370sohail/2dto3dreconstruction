@@ -1,17 +1,10 @@
-import numpy as np
-import cv2
-from matplotlib import pyplot as plt
-import open3d as o3d
-
 import argparse
 
-import utils.rgbd as rgbd
-import utils.utils as utils
+import numpy as np
+
 import open3d_utils.fpfh as o3d_utils
-import homography_utils.q8 as q8
-import homography_utils.q9 as q9
-import homo3d
 import reconstruct as rec
+import utils.rgbd as rgbd
 
 
 def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image_set_name=None, poisson=True, plot=True):
@@ -35,6 +28,7 @@ def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image
         all_results.append(results.transformation)
 
     rec.chain_transformation(pcds, all_results, dump, dump_folder, image_set_name, poisson, plot)
+
 
 def depth_largobject(depth_img):
     img_shape = depth_img.shape
@@ -79,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument('--plot', default='no', type=str, help='method of reconstruction')
     args = parser.parse_args()
 
-    depth_scale = 0.1
+    depth_scale = 0.7
     if args.inter == 'yes':
         depth_scale = 1
 
@@ -100,16 +94,16 @@ if __name__ == "__main__":
     if args.inter == 'yes':
         point_clouds = depth_images_to_3d_pts_ld(depth_images)
     else:
-        point_clouds = rec.depth_images_to_3d_pts(depth_images)
+        point_clouds = rec.depth_images_to_3d_pts(depth_images, scale=depth_scale)
 
     fast = False
     if args.fast == 'yes':
         fast = True
 
-    if (args.mode == "fpfh"):
-        # fast vexel = 10 ransac voexl = 20
+    if args.mode == "fpfh":
+        # fast voxel = 10 ransac voxel = 20
         fpfh(point_clouds, args.voxel, fast, dump, args.folder, args.name, poisson, plot)
-    elif (args.mode == "rigid3d"):
+    elif args.mode == "rigid3d":
         np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = rec.get_kps_decs(rgb_images)
         rec.rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump,
                          args.folder, args.name, poisson, plot)

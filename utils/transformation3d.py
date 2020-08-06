@@ -1,6 +1,4 @@
 import csv
-import time
-
 import os
 
 import cv2
@@ -9,7 +7,7 @@ import open3d as o3d
 from scipy import optimize
 from skimage import io
 
-from icp import icp
+from utils.icp import icp
 
 
 def generate_keypoints_and_match(img1, img2):
@@ -215,17 +213,18 @@ def apply_points_transformation(pts, transformation):
     return pts[:, :3] / np.expand_dims(pts[:, 3], axis=1)
 
 
-def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_pts_frac=1., partial_set_frac=1.):
+def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_pts_frac=1., partial_set_frac=1.,
+                  img1_pts=None, img2_pts=None):
     """
     Perform global image registration given the RGB and depth of two images by
 
         1. Performing global registration by extracting keypoints from RGB images
-        2.
+        2. Performing local registration by ICP
 
-    :param img1_rgb: h x w x 3 image
-    :param img2_rgb: h x w x 3 image
-    :param img1_depth: h x w depth image
-    :param img2_depth: h x w depth image
+    :param img1_rgb: (h, w, 3) image
+    :param img2_rgb: (h, w, 3) image
+    :param img1_depth: (h, w) depth image
+    :param img2_depth: (h, w) depth image
     :param scale: scaling factor for loading point clouds (see in-depth explanation in depth_to_voxel() function)
     :param filter_pts_frac: fraction of all the points to use when performing ICP. Must be in range (0, 1], though
                             choosing a good value would depend on the density of the depth we are working with.
@@ -234,20 +233,24 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
                              though maybe not exactly 1, since we can expect a high overlap between frames of a
                              video. Alternatively, if we are taking one frame from every couple of frames, this
                              value should be slightly lower.
+    :param img1_pts: (h x w, 3) points, optional. If this is given, scale is not needed for image 1.
+    :param img2_pts: (h x w, 3) points, optional. If this is given, scale is not needed for image 1.
     :return: image 1 point cloud,
              image 2 point cloud,
              4x4 transformation matrix that maps image 1 to image 2
     """
     # convert depth to point cloud
-    img1_pts = depth_to_voxel(img1_depth, scale=scale)
-    img2_pts = depth_to_voxel(img2_depth, scale=scale)
+    if img1_pts is None:
+        img1_pts = depth_to_voxel(img1_depth, scale=scale)
+    if img2_pts is None:
+        img2_pts = depth_to_voxel(img2_depth, scale=scale)
 
     # find RGB matches
     kp1, kp2, matches = generate_keypoints_and_match(img1_rgb, img2_rgb)
     matches = refine_matches(matches)
 
     # # draw matches
-    # img = cv2.drawMatches(img1, kp1, img2, kp2, matches, outImg=None,
+    # img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
     #                       flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
     # cv2.imshow("matches", img)
     # cv2.waitKey()
