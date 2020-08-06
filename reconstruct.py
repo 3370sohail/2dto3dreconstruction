@@ -10,7 +10,7 @@ import homography_utils.q9 as q9
 import open3d_utils.fpfh as o3d_utils
 import utils.r3d as r3d
 import utils.transformation3d as trans3d
-# import dense_depth.depth as dd
+import dense_depth.depth as dd
 import utils.utils as utils
 
 
@@ -85,7 +85,7 @@ def make_pcds(point_clouds, save_intermediate=False, out_folder=None, image_set_
     return pcds
 
 
-def fpfh(point_clouds, save_intermediate=False, out_folder=None, image_set_name=None, poisson=True, plot=True):
+def fpfh(point_clouds, voxel=10, fast=False, dump=False, dump_folder=None, image_set_name=None, poisson=True, plot=True):
     """
     Global point cloud registration using Fast Point Feature Histogram (FPFH), using Open3D's
 
@@ -97,6 +97,8 @@ def fpfh(point_clouds, save_intermediate=False, out_folder=None, image_set_name=
     results from these complex algorithms.
 
     :param point_clouds: list of (l x w, 3) point clouds
+    :param voxel: the size of the voxel to down sample
+    :param fast: True to run fast global registration, RANSAC other wise
     :param save_intermediate: True to save the intermediate point clouds when registering many point clouds
     :param out_folder: folder to save point clouds (CSVs and PCDs) and meshes (PLYs) to
     :param image_set_name: name root for point clouds (CSVs and PCDs) and meshes (PLYs)
@@ -105,28 +107,27 @@ def fpfh(point_clouds, save_intermediate=False, out_folder=None, image_set_name=
     :param plot: True to plot intermediate results when running algorithm, False otherwise
     :return: None, images will be saved to the out_folder
     """
-    pcds = make_pcds(point_clouds, save_intermediate, out_folder, image_set_name)
+
+    pcds = make_pcds(point_clouds, dump, dump_folder, image_set_name)
     all_results = []
-
-    # perform FPFH between every 2 consecutive images
     for i in range(1, len(pcds)):
+        norm_radius = voxel * 2
+        fpfh_radius = voxel * 5
+        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], voxel, norm_radius, 30, fpfh_radius, 100, plot)
+        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i - 1], voxel, norm_radius, 30, fpfh_radius, 100, plot)
 
-        # compute PCDs and FPFH descriptors
-        src_pcd, src_fpfh = o3d_utils.preprocess_point_cloud(pcds[i], 5, 10, 30, 25, 100, plot)
-        tar_pcd, tar_fpfh = o3d_utils.preprocess_point_cloud(pcds[i - 1], 5, 10, 30, 25, 100, plot)
-
-        # perform global registration between computed point clouds with features
-        results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, 5)
+        if fast:
+            results = o3d_utils.execute_fast_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel)
+        else:
+            results = o3d_utils.execute_global_registration(src_pcd, tar_pcd, src_fpfh, tar_fpfh, voxel)
 
         if plot:
             o3d_utils.visualize_transformation(src_pcd, tar_pcd, results.transformation)
-
         print(results)
         print(results.transformation)
         all_results.append(results.transformation)
 
-    # chain all point clouds together with computed transformation
-    chain_transformation(pcds, all_results, save_intermediate, out_folder, image_set_name, poisson, plot)
+    chain_transformation(pcds, all_results, dump, dump_folder, image_set_name, poisson, plot)
 
 
 def apply_ball_point(pcd, plot=True):
@@ -140,18 +141,17 @@ def apply_ball_point(pcd, plot=True):
     :return: generated mesh from point cloud
     """
     print("applying ball point surface reconstruction")
-    pcd1_temp = pcd  # pcd.voxel_down_sample(voxel_size=0.5)
+    pcd1_temp = pcd
     pcd1_temp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-    radii = [150, 150, 150, 150]
 
     # find radii size around points
     distances = pcd1_temp.compute_nearest_neighbor_distance()
     avg_dist = np.mean(distances)
-    radius = 1.5 * avg_dist
+    radius = avg_dist
 
     # generate ball point surface meshing
     rec_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
-        pcd1_temp, o3d.utility.DoubleVector([radius, radius * 2])
+        pcd1_temp, o3d.utility.DoubleVector([radius, radius * 1.5, radius * 2])
     )
 
     # colour and return
@@ -216,13 +216,16 @@ def chain_transformation(pcds, transformations, save_intermediate=False, out_fol
             o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(out_folder, image_set_name, i), pcds[i])
 
         combined_pcd += pcds[i]
+        combined_pcd = combined_pcd.voxel_down_sample(voxel_size=2)
 
+    o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(out_folder, image_set_name, "final"), combined_pcd)
     # generate surface mesh for merged point clouds
     combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
     if poisson:
         mesh = apply_poisson(combined_pcd, plot)
         name = 'poisson'
     else:
+        combined_pcd.voxel_down_sample(voxel_size=5)
         mesh = apply_ball_point(combined_pcd, plot)
         name = 'ball_point'
 
@@ -354,8 +357,10 @@ if __name__ == "__main__":
     # Argument Parser
     parser = argparse.ArgumentParser(description='High Quality Monocular Depth Estimation via Transfer Learning')
     parser.add_argument('--model', default='./models/nyu.h5', type=str, help='Trained Keras model file.')
-    parser.add_argument('--input', default='./image_sets/kitchen2/*.png', type=str, help='Input filename or folder.')
-    parser.add_argument('--mode', default='homo', type=str, help='method of reconstruction')
+    parser.add_argument('--input', default='./image_sets/cars/*.jpg', type=str, help='Input filename or folder.')
+    parser.add_argument('--mode', default='fpfh', type=str, help='method of reconstruction')
+    parser.add_argument('--voxel', default=5, type=int, help='method of reconstruction')
+    parser.add_argument('--fast', default='no', type=str, help='method of reconstruction')
     parser.add_argument('--surface', default='poisson', type=str, help='method of reconstruction')
     parser.add_argument('--dump', default='yes', type=str, help='method of reconstruction')
     parser.add_argument('--folder', default='./image_sets/cars', type=str, help='method of reconstruction')
@@ -386,10 +391,15 @@ if __name__ == "__main__":
     if args.dump == "yes":
         dump = True
 
+    fast = False
+    if args.fast == 'yes':
+        fast = True
+
     np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img = get_kps_decs(rgb_images)
     point_clouds = depth_images_to_3d_pts(depth_images)
     if (args.mode == "fpfh"):
-        fpfh(point_clouds, dump, args.folder, args.name, poisson, plot)
+        # fast voxel = 5 ransac voxel = 10
+        fpfh(point_clouds, args.voxel, fast, dump, args.folder, args.name, poisson, plot)
     elif (args.mode == "rigid3d"):
         rigid3d_proc(point_clouds, rgb_images, depth_images, np_kps_pre_img, cv_kps_pre_img, cv_des_pre_img, dump,
                      args.folder, args.name, poisson, plot)

@@ -3,11 +3,16 @@ import copy
 import numpy as np
 import open3d as o3d
 
+"""
+DISCLAIMER: this code belongs to the open3d tutorial
+http://www.open3d.org/docs/release/tutorial/Advanced/global_registration.html
+with only very small modifications for tuning proposes 
+"""
 
 def visualize_transformation(pcd1, pcd2, transformation):
     """
-    updated version draw_registration_result(source, target, transformation) from
-    http://www.open3d.org/docs/release/tutorial/Advanced/global_registration.html
+    credit to open3d tutorial:
+        - http://www.open3d.org/docs/release/tutorial/Advanced/global_registration.html#Visualization
     Args:
         pcd1:
         pcd2:
@@ -26,7 +31,8 @@ def visualize_transformation(pcd1, pcd2, transformation):
 
 def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius_feature, max_nn_feature, plot=True):
     """
-
+    credit to open3d tutorial:
+        - Implementation for FPFH descriptors: http://www.open3d.org/docs/0.9.0/python_api/open3d.registration.compute_fpfh_feature.html#open3d-registration-compute-fpfh-feature
     Args:
         pcd:
         voxel_size:
@@ -36,8 +42,7 @@ def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius
     Returns:
 
     """
-    pcd_copy = pcd.voxel_down_sample(voxel_size=voxel_size)  # copy.deepcopy(pcd)
-    # pcd_copy.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    pcd_copy = pcd.voxel_down_sample(voxel_size=voxel_size)
     pcd_copy.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=max_nn_normal))
     print(pcd_copy.dimension)
     if plot:
@@ -51,8 +56,20 @@ def preprocess_point_cloud(pcd, voxel_size, radius_normal, max_nn_normal, radius
 
 def execute_global_registration(source_down, target_down, source_fpfh,
                                 target_fpfh, voxel_size):
+    """
+    credit to open3d tutorial:
+        - RANSAC 3D transformation estimation: http://www.open3d.org/docs/release/tutorial/Advanced/global_registration.html#RANSAC
+    Args:
+        source_down:
+        target_down:
+        source_fpfh:
+        target_fpfh:
+        voxel_size:
+
+    Returns:
+
+    """
     distance_threshold = voxel_size * 1.5
-    rad = np.radians(5)
     print(":: RANSAC registration on downsampled point clouds.")
     print("   Since the downsampling voxel size is %.3f," % voxel_size)
     print("   we use a liberal distance threshold %.3f." % distance_threshold)
@@ -68,7 +85,20 @@ def execute_global_registration(source_down, target_down, source_fpfh,
 
 def execute_fast_global_registration(source_down, target_down, source_fpfh,
                                      target_fpfh, voxel_size):
-    distance_threshold = voxel_size
+    """
+    credit to open3d tutorial:
+        - Fast Global Registration: http://www.open3d.org/docs/release/tutorial/Advanced/global_registration.html#Fast-global-registration
+    Args:
+        source_down:
+        target_down:
+        source_fpfh:
+        target_fpfh:
+        voxel_size:
+
+    Returns:
+
+    """
+    distance_threshold = voxel_size * 1.5
     print(":: Apply fast global registration with distance threshold %.3f" \
           % distance_threshold)
     result = o3d.registration.registration_fast_based_on_feature_matching(
