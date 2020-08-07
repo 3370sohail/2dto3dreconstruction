@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
 
-# import dense_depth.depth as dd
+import dense_depth.depth as dd
 import homography_utils.q8 as q8
 import homography_utils.q9 as q9
 import open3d_utils.fpfh as o3d_utils
@@ -167,7 +167,7 @@ def apply_poisson(pcd, plot=True):
     """
     # generate Poisson surface meshing
     print("applying poisson surface reconstruction")
-    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=10)
 
     # filter out areas that are too dense
     vertices_to_remove = densities < np.quantile(densities, 0.01)
@@ -219,9 +219,10 @@ def chain_transformation(pcds, transformations, save_intermediate=False, out_fol
         combined_pcd += pcds[i]
         combined_pcd = combined_pcd.voxel_down_sample(voxel_size=2)
 
-    o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(out_folder, image_set_name, "final"), combined_pcd)
     # generate surface mesh for merged point clouds
     combined_pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    o3d.io.write_point_cloud('{}/{}_{}.pcd'.format(out_folder, image_set_name, "final"), combined_pcd)
+
     if poisson:
         mesh = apply_poisson(combined_pcd, plot)
         name = 'poisson'
@@ -386,7 +387,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    rgb_images, depth_images = dd.get_depth(args.model, args.input)
+    rgb_images, depth_images = dd.get_depth(args.model, args.rgb)
 
     # plot generated depth images
     if args.plot:

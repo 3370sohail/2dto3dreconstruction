@@ -2,9 +2,12 @@
 Rigid 3D Transformation
 ----------------------------------------------------------------------------------------------------------------
 
-Taken from https://github.com/nghiaho12/rigid_transform_3D/blob/master/rigid_transform_3D.py
+Adapted from https://github.com/nghiaho12/rigid_transform_3D
 
 Edited slightly to work with newer NumPy versions
+
+"Least-Squares Fitting of Two 3-D Point Sets", Arun, K. S. and Huang, T. S. and Blostein, S. D,
+IEEE Transactions on Pattern Analysis and Machine Intelligence, Volume 9 Issue 5, May 1987
 """
 
 from numpy import *
