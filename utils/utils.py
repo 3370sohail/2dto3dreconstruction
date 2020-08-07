@@ -90,24 +90,14 @@ def voxel_to_csv(points, path):
 
 
 def get_transformed_points(keypoints, H_matrix):
-    keypoints_3dim = np.zeros((keypoints.shape[0], keypoints.shape[1] + 1))
     transformed_points = np.zeros(keypoints.shape)
-    # print(keypoints_3dim.shape)
     for i in range(len(keypoints)):
         keypoint_3dim = np.array([[keypoints[i][1], keypoints[i][0], keypoints[i][2], 1]], dtype=float)
-        # print(np.transpose(keypoint_3dim))
         transformed_point_3dim = np.dot(H_matrix, np.transpose(keypoint_3dim))
-        # print(transformed_point_3dim)
 
-        # normalize_transformed_point = transformed_point_3dim[:4, :] / transformed_point_3dim[3, :]
-        # keypoints_3dim[i] = transformed_point_3dim
         new_value = np.transpose(transformed_point_3dim)
         transformed_points[i] = [new_value[0][1], new_value[0][0], new_value[0][2]]
-        # print(transformed_points)
 
-    # print(keypoints_3dim)
-    # print(transformed_points)
-    # print(keypoints)
     return transformed_points
 
 

@@ -1,11 +1,9 @@
 import csv
-import os
 
 import cv2
 import numpy as np
 import open3d as o3d
 from scipy import optimize
-from skimage import io
 
 from utils.icp import icp
 
@@ -249,11 +247,11 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
     kp1, kp2, matches = generate_keypoints_and_match(img1_rgb, img2_rgb)
     matches = refine_matches(matches)
 
-    # # draw matches
-    # img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
-    #                       flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
-    # cv2.imshow("matches", img)
-    # cv2.waitKey()
+    # draw matches
+    img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
+                          flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
+    cv2.imshow("matches", img)
+    cv2.waitKey()
 
     # get 3D coordinates of matches
     kp1, kp2 = get_key_points_from_matches(kp1, kp2, matches)

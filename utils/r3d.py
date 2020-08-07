@@ -2,7 +2,9 @@
 Rigid 3D Transformation
 ----------------------------------------------------------------------------------------------------------------
 
+Taken from https://github.com/nghiaho12/rigid_transform_3D/blob/master/rigid_transform_3D.py
 
+Edited slightly to work with newer NumPy versions
 """
 
 from numpy import *
