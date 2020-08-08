@@ -13,22 +13,25 @@ This project requires a machine learning model to run the depth predication. Thi
 found in the [DenseDepth Github](https://github.com/ialhashim/DenseDepth). Alternately you can download one of the pertained
 models from the DenseDepth repository.
 
-#### Pre-trained Models
-* [NYU Depth V2](https://s3-eu-west-1.amazonaws.com/densedepth/nyu.h5) (165 MB)
-* [KITTI](https://s3-eu-west-1.amazonaws.com/densedepth/kitti.h5) (165 MB)
-
 ## Files and Pipelines
 
 Here we give a brief overview of the files in this repository and what each file’s function is.
 
 - `dense_depth/`: Folder containing clone of [DenseDepth repository](https://github.com/ialhashim/DenseDepth). It is here so that we can use the DenseDepth model to predict depth maps.
-- `homography_utils/`: RANSAC and feature matching algorithms
 - `examples/`: Folder containing several image sets for running our pipeline on
-- `open3d_utils/`: Functions from Open3D documentation that we use in our pipeline
+- `utils/homography_utils/`: RANSAC and feature matching algorithms
+- `utils/open3d_fpfh.py`: Functions from Open3D documentation that we use in our pipeline
 - `utils/`: Our utils folder. This includes a file for every method in the pipeline that we use: ICP, rigid 3D, 3D homography, and some other miscellaneous utils.
 - `reconstruct.py` and `reconstruct_rgbd.py`: These are the two main pipelines in our model.
+- `requirements.txt`: List of Python packages needed to run this project
 
 We will go through `reconstruct.py` and `reconstruct_rgbd.py` in more detail below.
+
+#### Pre-trained Models
+
+To run `reconstruct.py`, we need the DenseDepth model pretrained on NYU Depth v2. We have linked the models here.
+* [NYU Depth V2](https://s3-eu-west-1.amazonaws.com/densedepth/nyu.h5) (165 MB)
+* [KITTI](https://s3-eu-west-1.amazonaws.com/densedepth/kitti.h5) (165 MB)
 
 ## Usage
 
@@ -124,7 +127,12 @@ optional arguments:
 
 ```
 
-## Reproduce Results
+## Examples
+
+Below we have a bunch of command line arguments for using our pipeline to generate meshes. Just start up your virtual environment (or wherever you installed your dependencies), cd into this project's repo, and run these in your terminal!
+
+The results that we generated running these examples can be found here.
+
 ### Reconstruct
 
 #### Front-Side of a Car
