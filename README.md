@@ -9,6 +9,13 @@ This project runs on Python 3.5+. We recommend doing the following installations
 ```bash
 pip install -r requirements.txt
 ```
+This project requires a machine learning model to run the depth predication. This can be either generated via the instructions
+found in the [DenseDepth Github](https://github.com/ialhashim/DenseDepth). Alternately you can download one of the pertained
+models from the DenseDepth repository.
+
+#### Pre-trained Models
+* [NYU Depth V2](https://s3-eu-west-1.amazonaws.com/densedepth/nyu.h5) (165 MB)
+* [KITTI](https://s3-eu-west-1.amazonaws.com/densedepth/kitti.h5) (165 MB)
 
 ## Files and Pipelines
 
@@ -16,7 +23,7 @@ Here we give a brief overview of the files in this repository and what each file
 
 - `dense_depth/`: Folder containing clone of [DenseDepth repository](https://github.com/ialhashim/DenseDepth). It is here so that we can use the DenseDepth model to predict depth maps.
 - `homography_utils/`: RANSAC and feature matching algorithms
-- `image_sets/`: Folder containing several image sets for running our pipeline on
+- `examples/`: Folder containing several image sets for running our pipeline on
 - `open3d_utils/`: Functions from Open3D documentation that we use in our pipeline
 - `utils/`: Our utils folder. This includes a file for every method in the pipeline that we use: ICP, rigid 3D, 3D homography, and some other miscellaneous utils.
 - `reconstruct.py` and `reconstruct_rgbd.py`: These are the two main pipelines in our model.
@@ -80,7 +87,7 @@ optional arguments:
   --plot                Enable to plot intermediate results in pipeline
 
 Note: input folder must be the format 
-./image_sets/sofa2/*.jpg
+./examples/sofa2/*.jpg
 
 ```
 
@@ -118,19 +125,56 @@ optional arguments:
 ```
 
 ## Reproduce Results
+### Reconstruct
+
+#### Front-Side of a Car
 
 ```
-python  reconstruct.py --rgb ./image_sets/cars/*.jpg -mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./image_sets/cars --out_name cars_fpfh_f_poisson
-```
-
-```
-python  reconstruct.py --rgb ./image_sets/cars/*.jpg -mode fpfh --voxel 5 --fast --surface ball_point --save_intermediate --out_folder ./image_sets/cars --out_name cars_fpfh_f_ball
-```
-
-```
-python  reconstruct.py --rgb ./image_sets/cars/*.jpg -mode fpfh --voxel 5 --surface poisson  --save_intermediate --out_folder ./image_sets/cars/ --out_name cars_fpfh_r_ball
+python reconstruct.py --rgb ./examples/car/*.jpg -mode rigid3d --surface poisson --save_intermediate --out_folder ./examples/car/rigid3d --out_name car_poisson
 ```
 
 ```
-python  reconstruct.py --rgb ./image_sets/cars/*.jpg -mode fpfh --voxel 5 --surface ball_point --save_intermediate --out_folder ./image_sets/cars --out_name cars_fpfh_r_ball
+python reconstruct.py --rgb ./examples/car/*.jpg -mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/car/homography --out_name car_poisson
 ```
+
+```
+python reconstruct.py --rgb ./examples/car/*.jpg -mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_fast --out_name car_poisson
+```
+
+```
+python reconstruct.py --rgb ./examples/car/*.jpg -mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_ransac --out_name car_poisson
+```
+
+#### Helmet
+
+```
+python reconstruct.py --rgb ./examples/helmet/*.jpg -mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/helmet/homography --out_name helmet_poisson
+```
+
+```
+python reconstruct.py --rgb ./examples/helmet/*.jpg -mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_fast --out_name helmet_poisson
+```
+
+```
+python reconstruct.py --rgb ./examples/helmet/*.jpg -mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_ransac --out_name helmet_poisson
+```
+
+
+### Reconstruct RGBD
+
+#### Front-Side of a Car
+
+```
+python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode rigid3d --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/rigid3d --out_name car_rgb_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode fpfh --fast --voxel 10 --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/fpfh_fast --out_name car_rgb_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/fpfh_ransac --out_name car_rgb_poisson
+```
+
+
+
