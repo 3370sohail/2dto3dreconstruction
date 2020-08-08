@@ -6,9 +6,9 @@
 /.vscode
 *.jpg
 *.png
-*.jpg
 *.csv
 *.pcd
 *.pyc
+*.ply
 /.idea
 /dense_depth/__pycache__
