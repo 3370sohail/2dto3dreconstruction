@@ -1,3 +1,9 @@
+"""
+This code is from Sohail's Assignment 3. But we only started using this code after a3 was submitted, since it was
+convenient to reuse some of the functions he had implemented.
+----------------------------------------------------------------------------------------------------------------
+"""
+
 import numpy as np
 import cv2
 import glob
@@ -160,7 +166,7 @@ def ransac_loop(img1, img2, kp1, kp2, bf_matches, plot=False, x0=None, y0=None, 
     number_of_inliers = 0
     best_base_matches = []
 
-    for r in range(50):
+    for r in range(100):
         
         base_pairings = []
         match_idxs = np.random.randint(len(bf_matches), size=4)
@@ -197,9 +203,6 @@ def ransac_loop(img1, img2, kp1, kp2, bf_matches, plot=False, x0=None, y0=None, 
     final_matches, ssd = get_ssd_v2(orginal_points, transformed_points, keypoints_prime, binned_array_prime)
     min_count = len(bf_matches) * 0.5
     print("Final accuracy using {} pts: matches={} in the 50 count ={} ".format(number_of_inliers, len(final_matches), min_count))
-
-    if (len(final_matches) < min_count):
-       return ransac_loop(img1, img2, kp1, kp2, bf_matches)
 
     if (plot):
         q8.draw_matches(img1, img2, orginal_points, keypoints_prime, final_matches, "inliers matching points", x0, y0, window)

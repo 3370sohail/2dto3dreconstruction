@@ -59,6 +59,9 @@ The final result of this pipeline is a dense 3D mesh!
 
 We have listed command line usage for both pipelines below.
 
+### Note
+for both pipelines all the images need to be number in an increasing order starting at 1 
+
 ### Reconstruct
 
 ```bash
@@ -156,10 +159,6 @@ python reconstruct.py --rgb ./examples/car/*.jpg --mode fpfh --voxel 5 --surface
 #### Helmet
 
 ```
-python reconstruct.py --rgb ./examples/helmet/*.jpg --mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/helmet/homography --out_name helmet_poisson
-```
-
-```
 python reconstruct.py --rgb ./examples/helmet/*.jpg --mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_fast --out_name helmet_poisson
 ```
 
@@ -167,25 +166,24 @@ python reconstruct.py --rgb ./examples/helmet/*.jpg --mode fpfh --voxel 5 --fast
 python reconstruct.py --rgb ./examples/helmet/*.jpg --mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_ransac --out_name helmet_poisson
 ```
 
-
 ### Reconstruct RGBD
 
 #### kitchen 
 
 ```
-python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode rigid3d --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/rigid3d --out_name kitchen_rgbd_poisson
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/imgs/*.png --depth ./examples/kitchen_rgbd/depth/*.png --inter true --mode rigid3d --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/rigid3d --out_name kitchen_rgbd_poisson
 ```
 
 ```
-python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/homography --out_name kitchen_rgbd_poisson
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/imgs/*.png --depth ./examples/kitchen_rgbd/depth/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/homography --out_name kitchen_rgbd_poisson
 ```
 
 ```
-python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode fpfh --fast --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_fast --out_name kitchen_rgbd_poisson
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/imgs/*.png --depth ./examples/kitchen_rgbd/depth/*.png --inter true --mode fpfh --fast --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_fast --out_name kitchen_rgbd_poisson
 ```
 
 ```
-python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_ransac --out_name kitchen_rgbd_poisson
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/imgs/*.png --depth ./examples/kitchen_rgbd/depth/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_ransac --out_name kitchen_rgbd_poisson
 ```
 
 #### Front-Side of a Car
@@ -203,7 +201,7 @@ python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/ca
 ```
 
 ### Car bad matches
-images of the sofa from frames that are far part from each other.
+images of the car from frames that are far part from each other.
 
 ```
 python reconstruct_rgbd.py --rgb ./examples/car_bad/*.jpg --depth ./examples/car_bad/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/car_bad/homography --out_name car_rgb_poisson

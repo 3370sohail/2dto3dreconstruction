@@ -1,3 +1,9 @@
+"""
+This code is from Sohail's Assignment 3. But we only started using this code after a3 was submitted, since it was
+convenient to reuse some of the functions he had implemented.
+----------------------------------------------------------------------------------------------------------------
+"""
+
 import numpy as np
 import cv2
 import glob
