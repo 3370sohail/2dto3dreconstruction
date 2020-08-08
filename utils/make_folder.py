@@ -8,9 +8,7 @@ def rename_move(src, dst, type):
         src:
         dst:
         type:
-
     Returns:
-
     """
     path = os.path.abspath(src)
     file_names = os.listdir(path)
@@ -33,6 +31,3 @@ loc2 = r"C:\Users\sohai\Documents\Uni 2020\csc420\Project\other3"
 
 rename_move(loc, loc2, 'jpg')
 rename_move(locd, loc2, 'png')
-
-
-

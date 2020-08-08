@@ -1,20 +1,10 @@
 import numpy as np
-import math
 import cv2
-from matplotlib import pyplot as plt
 import glob
 import re
-from scipy import signal
-from scipy import ndimage
-from scipy.ndimage import gaussian_filter
-from skimage.transform import rescale, resize, downscale_local_mean, AffineTransform, warp, rotate, ProjectiveTransform
-from skimage.filters import threshold_otsu, sobel_h, sobel_v, gaussian
-from skimage.feature import blob_dog, plot_matches, corner_harris, corner_subpix, corner_peaks
-from scipy.spatial import distance
 import argparse
-import time
 
-import homography_utils.q8 as q8
+import utils.homography_utils.q8 as q8
 
 from collections import namedtuple
 

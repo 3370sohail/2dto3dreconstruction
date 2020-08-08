@@ -6,9 +6,9 @@ import open3d as o3d
 from matplotlib import pyplot as plt
 
 import dense_depth.depth as dd
-import homography_utils.q8 as q8
-import homography_utils.q9 as q9
-import open3d_utils.fpfh as o3d_utils
+import utils.homography_utils.q8 as q8
+import utils.homography_utils.q9 as q9
+import utils.open3d_fpfh as o3d_utils
 import utils.r3d as r3d
 import utils.transformation3d as trans3d
 import utils.utils as utils
