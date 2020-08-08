@@ -5,6 +5,9 @@ import numpy as np
 import open3d as o3d
 from scipy import optimize
 
+from homography_utils.q9 import ransac_loop
+from homography_utils.q8 import draw_matches
+
 from utils.icp import icp
 
 
@@ -68,8 +71,8 @@ def get_key_points_from_matches(kp1, kp2, matches):
     :param matches: matches
     :return: rounded coordinates of points
     """
-    p1 = np.array([kp1[match.queryIdx].pt for match in matches])
-    p2 = np.array([kp2[match.trainIdx].pt for match in matches])
+    p1 = np.array([kp1[m[0]].pt for m in matches])
+    p2 = np.array([kp2[m[1]].pt for m in matches])
     p1 = np.rint(p1).astype(np.int16)
     p2 = np.rint(p2).astype(np.int16)
     return p1, p2
@@ -246,19 +249,25 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
 
     # find RGB matches
     kp1, kp2, matches = generate_keypoints_and_match(img1_rgb, img2_rgb)
-    matches = refine_matches(matches)
+    matches = np.array([(m.queryIdx, m.trainIdx) for m in matches])
+    _, matches = ransac_loop(img1_rgb, img2_rgb, kp1, kp2, matches)
 
     # draw matches
     if plot:
-        img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
-                              flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
-        cv2.imshow("matches", img)
-        cv2.waitKey()
+        np_kp1 = np.array([(kp.pt[1], kp.pt[0]) for kp in kp1])
+        np_kp2 = np.array([(kp.pt[1], kp.pt[0]) for kp in kp2])
+        draw_matches(img1_rgb, img2_rgb, np_kp1, np_kp2, matches, title="Matches after RANSAC")
 
     # get 3D coordinates of matches
     kp1, kp2 = get_key_points_from_matches(kp1, kp2, matches)
     img1_kp = [(p[0], p[1], img1_depth[p[1], p[0]]) for p in kp1]
     img2_kp = [(p[0], p[1], img2_depth[p[1], p[0]]) for p in kp2]
+
+    # remove 0 entries
+    zipped = zip(img1_kp, img2_kp)
+    zipped = [z for z in zipped if z[0][2] != 0 and z[1][2] != 0]
+    img1_kp, img2_kp = zip(*zipped)
+
     img1_kp = np.array(img1_kp)
     img2_kp = np.array(img2_kp)
 
