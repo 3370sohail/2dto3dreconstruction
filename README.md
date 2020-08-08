@@ -124,7 +124,12 @@ optional arguments:
 
 ```
 
-## Reproduce Results
+## Examples
+
+Below we have a bunch of command line arguments for using our pipeline to generate meshes. Just start up your virtual environment (or wherever you installed your dependencies), cd into this project's repo, and run these in your terminal!
+
+The results that we generated running these examples can be found here.
+
 ### Reconstruct
 
 #### Front-Side of a Car
