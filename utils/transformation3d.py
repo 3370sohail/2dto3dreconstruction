@@ -212,7 +212,7 @@ def apply_points_transformation(pts, transformation):
 
 
 def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_pts_frac=1., partial_set_frac=1.,
-                  img1_pts=None, img2_pts=None):
+                  img1_pts=None, img2_pts=None, plot=False):
     """
     Perform global image registration given the RGB and depth of two images by
 
@@ -233,6 +233,7 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
                              value should be slightly lower.
     :param img1_pts: (h x w, 3) points, optional. If this is given, scale is not needed for image 1.
     :param img2_pts: (h x w, 3) points, optional. If this is given, scale is not needed for image 1.
+    :param plot: True to draw matches, False otherwise
     :return: image 1 point cloud,
              image 2 point cloud,
              4x4 transformation matrix that maps image 1 to image 2
@@ -248,10 +249,11 @@ def register_imgs(img1_rgb, img2_rgb, img1_depth, img2_depth, scale=1., filter_p
     matches = refine_matches(matches)
 
     # draw matches
-    img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
-                          flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
-    cv2.imshow("matches", img)
-    cv2.waitKey()
+    if plot:
+        img = cv2.drawMatches(img1_rgb, kp1, img2_rgb, kp2, matches, outImg=None,
+                              flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS)
+        cv2.imshow("matches", img)
+        cv2.waitKey()
 
     # get 3D coordinates of matches
     kp1, kp2 = get_key_points_from_matches(kp1, kp2, matches)

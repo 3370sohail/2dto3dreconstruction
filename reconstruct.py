@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 from matplotlib import pyplot as plt
 
-import dense_depth.depth as dd
+# import dense_depth.depth as dd
 import homography_utils.q8 as q8
 import homography_utils.q9 as q9
 import open3d_utils.fpfh as o3d_utils
@@ -321,7 +321,8 @@ def trans3d_proc(point_clouds, rgb_images, depth_images, save_intermediate=False
         # global registration with 3D transformation matrix and local fine registration with ICP
         _, _, h = trans3d.register_imgs(rgb_images[i], rgb_images[i - 1], depth_images[i], depth_images[i - 1],
                                         img1_pts=point_clouds[i], img2_pts=point_clouds[i - 1],
-                                        filter_pts_frac=filter_pts_frac, partial_set_frac=partial_set_frac)
+                                        filter_pts_frac=filter_pts_frac, partial_set_frac=partial_set_frac,
+                                        plot=plot)
 
         if plot:
             o3d_utils.visualize_transformation(pcds[i], pcds[i - 1], h)
