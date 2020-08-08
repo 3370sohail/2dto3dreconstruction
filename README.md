@@ -130,42 +130,60 @@ optional arguments:
 #### Front-Side of a Car
 
 ```
-python reconstruct.py --rgb ./examples/car/*.jpg -mode rigid3d --surface poisson --save_intermediate --out_folder ./examples/car/rigid3d --out_name car_poisson
+python reconstruct.py --rgb ./examples/car/*.jpg --mode rigid3d --surface poisson --save_intermediate --out_folder ./examples/car/rigid3d --out_name car_poisson
 ```
 
 ```
-python reconstruct.py --rgb ./examples/car/*.jpg -mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/car/homography --out_name car_poisson
+python reconstruct.py --rgb ./examples/car/*.jpg --mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/car/homography --out_name car_poisson
 ```
 
 ```
-python reconstruct.py --rgb ./examples/car/*.jpg -mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_fast --out_name car_poisson
+python reconstruct.py --rgb ./examples/car/*.jpg --mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_fast --out_name car_poisson
 ```
 
 ```
-python reconstruct.py --rgb ./examples/car/*.jpg -mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_ransac --out_name car_poisson
+python reconstruct.py --rgb ./examples/car/*.jpg --mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/car/fpfh_ransac --out_name car_poisson
 ```
 
 #### Helmet
 
 ```
-python reconstruct.py --rgb ./examples/helmet/*.jpg -mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/helmet/homography --out_name helmet_poisson
+python reconstruct.py --rgb ./examples/helmet/*.jpg --mode 3dhomo --surface poisson --save_intermediate --out_folder ./examples/helmet/homography --out_name helmet_poisson
 ```
 
 ```
-python reconstruct.py --rgb ./examples/helmet/*.jpg -mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_fast --out_name helmet_poisson
+python reconstruct.py --rgb ./examples/helmet/*.jpg --mode fpfh --voxel 5 --fast --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_fast --out_name helmet_poisson
 ```
 
 ```
-python reconstruct.py --rgb ./examples/helmet/*.jpg -mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_ransac --out_name helmet_poisson
+python reconstruct.py --rgb ./examples/helmet/*.jpg --mode fpfh --voxel 5 --surface poisson --save_intermediate --out_folder ./examples/helmet/fpfh_ransac --out_name helmet_poisson
 ```
 
 
 ### Reconstruct RGBD
 
+#### kitchen 
+
+```
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode rigid3d --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/rigid3d --out_name kitchen_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/homography --out_name kitchen_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode fpfh --fast --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_fast --out_name kitchen_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/kitchen_rgbd/*.jpg --depth ./examples/kitchen_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/kitchen_rgbd/fpfh_ransac --out_name kitchen_rgbd_poisson
+```
+
 #### Front-Side of a Car
 
 ```
-python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode rigid3d --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/rigid3d --out_name car_rgb_poisson
+python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/homography --out_name car_rgb_poisson
 ```
 
 ```
@@ -176,5 +194,42 @@ python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/ca
 python reconstruct_rgbd.py --rgb ./examples/car_rgbd/*.jpg --depth ./examples/car_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/car_rgbd/fpfh_ransac --out_name car_rgb_poisson
 ```
 
+### Car bad matches
+images of the sofa from frames that are far part from each other.
 
+```
+python reconstruct_rgbd.py --rgb ./examples/car_bad/*.jpg --depth ./examples/car_bad/*.png --inter true --mode 3dhomo --save_intermediate --surface poisson --out_folder ./examples/car_bad/homography --out_name car_rgb_poisson
+```
 
+```
+python reconstruct_rgbd.py --rgb ./examples/car_bad/*.jpg --depth ./examples/car_bad/*.png --inter true --mode fpfh --fast --voxel 10 --save_intermediate --surface poisson --out_folder ./examples/car_bad/fpfh_fast --out_name car_rgb_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/car_bad/*.jpg --depth ./examples/car_bad/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/car_bad/fpfh_ransac --out_name car_rgb_poisson
+```
+
+### Front of Sofa
+
+```
+python reconstruct_rgbd.py --rgb ./examples/sofa_rgbd/*.jpg --depth ./examples/sofa_rgbd/*.png --inter true --mode fpfh --fast --voxel 10 --save_intermediate --surface poisson --out_folder ./examples/sofa_rgbd/fpfh_fast --out_name sofa_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/sofa_rgbd/*.jpg --depth ./examples/sofa_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/sofa_rgbd/fpfh_ransac --out_name sofa_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/sofa_rgbd/*.jpg --depth ./examples/sofa_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface ball_point --out_folder ./examples/sofa_rgbd/fpfh_ransac --out_name sofa_rgbd_ball
+```
+
+### Sofa bad matches
+images of the sofa from frames that are far part from each other.
+
+```
+python reconstruct_rgbd.py --rgb ./examples/sofa_rgbd/*.jpg --depth ./examples/sofa_rgbd/*.png --inter true --mode fpfh --fast --voxel 10 --save_intermediate --surface poisson --out_folder ./examples/sofa_bad/fpfh_fast --out_name sofa_rgbd_poisson
+```
+
+```
+python reconstruct_rgbd.py --rgb ./examples/sofa_rgbd/*.jpg --depth ./examples/sofa_rgbd/*.png --inter true --mode fpfh --voxel 20 --save_intermediate --surface poisson --out_folder ./examples/sofa_bad/fpfh_ransac --out_name sofa_rgbd_poisson
+```
