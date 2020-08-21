@@ -1,0 +1,13 @@
+/__pycache__
+/data
+/*.h5
+/*.zip
+/.vscode
+*.jpg
+*.png
+*.csv
+*.pcd
+*.pyc
+*.ply
+/.idea
+/dense_depth/__pycache__
