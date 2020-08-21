@@ -19,6 +19,7 @@ Here we give a brief overview of the files in this repository and what each file
 
 - `dense_depth/`: Folder containing clone of [DenseDepth repository](https://github.com/ialhashim/DenseDepth). It is here so that we can use the DenseDepth model to predict depth maps.
 - `examples/`: Folder containing several image sets for running our pipeline on
+- `models/`: Folder to put models in
 - `utils/homography_utils/`: RANSAC and feature matching algorithms
 - `utils/open3d_fpfh.py`: Functions from Open3D documentation that we use in our pipeline
 - `utils/`: Our utils folder. This includes a file for every method in the pipeline that we use: ICP, rigid 3D, 3D homography, and some other miscellaneous utils.
@@ -132,9 +133,11 @@ optional arguments:
 
 ## Examples
 
-Below we have a bunch of command line arguments for using our pipeline to generate meshes. Just start up your virtual environment (or wherever you installed your dependencies), cd into this project's repo, and run these in your terminal!
+Below we have a bunch of command line arguments for using our pipeline to generate meshes, 
+using the [NYU Depth V2](https://s3-eu-west-1.amazonaws.com/densedepth/nyu.h5) (165 MB) model. 
+Place The nyu.h5 file into the `models/` folder. Then just start up your virtual environment (or wherever you installed your dependencies), cd into this project's repo, and run these in your terminal!
 
-The results that we generated running these examples can be found here.
+The results that we generated running these examples can be found [here](https://drive.google.com/drive/folders/1907IghbC04UDFmIyf7IN3_m3hfr55C8D?usp=sharing).
 
 ### Reconstruct
 
